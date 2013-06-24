@@ -1,14 +1,14 @@
 ---
 layout: post
-title: "JAVA IO 句柄泄露典型例子以及一些注意事项"
+title: "JAVA IO 句柄泄露典型例子以及一些TIPS"
 description: ""
 category: 
 tags: [J2SE-IO]
 ---
 
-    1.open stream
+    1.open stream //没有close
 	2.open stream 
-	  close stream
+	  close stream //没有在TCF中close
 	3.try
 	  { open stream}
 	  catch exception
@@ -26,21 +26,19 @@ tags: [J2SE-IO]
 	  finally
 	  {
 	  	try{
-	  		in.close;
+	  		in.close;  //in.close可能抛出异常,导致out无法close
 	  		out.clsoe;
 	  	}catch exception
-	  	{deal exception}
-	  	
-	  	
+	  	{deal exception}	  
 	  }
 	  5.
 	    try{
 	    InputStream in = null;
-	   if(ACondtion )
+	   try
 	    { in = openStreamA;
-	      do XXXX; 
-	    }else{
-	      in = openStreamB;
+	      do XXXX; //可能抛出异常,但是已经打开流了,
+	    }catch Exception{
+	      in = openStreamB;//导致openStreamA中流泄露
 	      do XXXX;
 	    }}
 	    catch(Exception)
@@ -56,18 +54,18 @@ tags: [J2SE-IO]
 	    catch(Exception)
 	    {deal exception}
 	    finally
-	    {in.close}
-	   7. 
+	    {in.close}//打开N个流,却只关闭了最后一个流
+	   7.打开socket连接,没有关闭socket
+ 
 	
-	socket 
-	
-	一些常见问题
-	1.是否需要关闭底层流
-	2.JAVA gc时对流的特殊操作
-	3.io 泄露时句柄观察
-	5.如何进行代码走读(stream|reader|socket)
-	6.使用ioutils 
-	7.方法参数或者返回值为Stream对象
+TIPS:
+
+0. 可以通过findbugs静态检查工具或者代码走读方式来发现IO流未关闭(通过UE指定正则表达式,关键字:stream|reader|socket,并使用perl 引擎)
+1. 不需要关闭底层流
+2. JAVA GC时对流的特殊操作
+3. io 泄露时句柄观察可使用lsop 命令和 或观察/proc/sys/fs/file-nr 
+4. 一般流操作建议使用Apache IOUtils 
+5. 除非是工具类,否则一般不建议方法参数或者返回值为Stream对象,要注明由谁来关闭流.
 	
 
 {% include JB/setup %}
