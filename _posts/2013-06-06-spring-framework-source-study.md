@@ -99,6 +99,7 @@ weak reference
 
 jaxb简单，略；spring的解析比较简单，
 整数加减乘除 编译原理实现 支持括号 后缀表达式
+String.intern 的不同版本的表现,1.7中还有方法区吗?
 
 BeanFactory
 ApplicationContext
@@ -126,6 +127,9 @@ void org.springframework.beans.factory.xml.DefaultBeanDefinitionDocumentReader.p
 ResourceLoader 资源的 定位 载入 注册 （spring 技术内幕）
 bean 演员 context 舞台 core 工具类 （xulingbo）
 
+jvm启动参数说法
+回收算法细节
+
 一般开源框架的特点 
 1.支持多种配置方式，注解，Resource loader
 2.提供事件（生命周期管理）和拦截器机制 
@@ -139,7 +143,9 @@ bean 演员 context 舞台 core 工具类 （xulingbo）
 7 domain，自建，cdn -- nginx --  
 8.服务无状态 ，减少锁， Btree ，lsm tree ，july blog，算法导论 请教 
 9.如何计算TPMC（需要计算吗，实际中根本不靠谱。）？
-集群，分布式，服务框架，远程通信框架，异步通信组件，序列化协议，restful api，
+集群，分布式，服务框架，远程通信框架，异步通信组件，序列化协议，
+-XX:MaxDirectMemorySize 
+restful api，
 lvs 
 zookeeper
 nosql
@@ -147,13 +153,16 @@ ml
 HashSet 是对HashMap的简单封装
 activiti 代码解读
 how tomcat works
-用taobao开源框架搭建高可用 mini taobao应用，包括前端，后端。  
+用taobao开源框架搭建高可用 mini taobao应用，包括前端，后端。
+Java 语言 ,虚拟机 规范  
 
 研究spring的source预备知识：
 设计模式，IOC,AOP的常见用法
 XML解析（DTD ,XSD,**）
 从单元测试入手，入口类 
 void org.springframework.beans.factory.xml.XmlBeanFactoryTests.testInitMethodIsInvoked() throws Exception
+
+
 
 昨晚梦里的一些东西：
 有符号数，无符号数
