@@ -21,9 +21,7 @@ JVM虚拟机在执行java程序的过程中会把其管理的内存划分为若�
 
 `Ojbect obj = new Object();` 这段简单的语句执行时,牵扯到栈,堆和方法区.  HotSpot JVM 中,ojb 这个reference直接存放的就是对象地址,其目的主要是为了提升性能.
 
-You can include literal backticks
-like `` `this` ``.
-
+ 
 
 
 
