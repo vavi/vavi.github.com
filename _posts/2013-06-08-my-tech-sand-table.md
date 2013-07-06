@@ -20,7 +20,7 @@ tags: []
 
 # JAVA应用
 * classloader 
-
+* String 
 * Unsafe 
 * GC
   * 引用队列 WeakReference.get()  
@@ -58,6 +58,7 @@ tags: []
  jdk source 
 锁优化 锁粗化 
 对象逃逸 
+Java 语言 ,虚拟机 规范
 有空读读javac源码,编译jdk
 String jvm整个过程加载
 effective java
@@ -69,18 +70,32 @@ java.lang.Instrument
 jmm内存模型保证引用替换后的原子操作?
 btrace
 jvm 字符串填充率 回头看下 
+new String 几个对象,R大帖子
+intern的细节
+jvm启动参数说法
+回收算法细节
+cglib
+-XX:MaxDirectMemorySize
+
 
 # 优秀设计思想
 * Clean Code
 * 敏捷原则 模式
 * 重构
 * 设计模式
+* * javascript 设计模式
 * 重构与设计模式
 * 领域驱动设计
   *  委托 代理 充血/贫血 
 * dubbo 作者blog
 * 分布式设计模式
 * 元数据 配置数据 业务数据 
+
+# 架构
+* restful api
+* lvs 
+* nosql
+
      
 # 典型开源框架
 * spring
@@ -120,7 +135,10 @@ jvm 字符串填充率 回头看下
   * lealone
   * cmt事务
 * 事务补偿
-  * 	
+  *
+* Web Framework
+	* cookie/session
+	* velocity 	
 * JMX管理业务参数
 * 架构演进
   * ROR
@@ -131,7 +149,8 @@ jvm 字符串填充率 回头看下
   * 不熟… 自我提升,官方补丁,工具检测,知名安全论坛,wooyun,搞好安全圈的人脉
 * 防止重复提交
 * 乱码问题
-* 写个cpu和io 100%忙的代码   
+* 写个cpu和io 100%忙的代码  
+* 9.如何计算TPMC（需要计算吗，实际中根本不靠谱。） 
 
 # 操作系统工具及应用
 
@@ -201,7 +220,12 @@ AI
 # 其他 
   
 以前看的书(公司图书馆,自己以前的电子书) 
-  
+
+# TODO
+weak reference
+整数加减乘除 编译原理实现 支持括号 后缀表达式
+String.intern 的不同版本的表现,1.7中还有方法区吗?
+springside
    
 
 {% include JB/setup %}
