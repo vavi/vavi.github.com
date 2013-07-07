@@ -62,6 +62,7 @@ Java 语言 ,虚拟机 规范
 有空读读javac源码,编译jdk
 String jvm整个过程加载
 effective java
+JavaPerfromance 
 blue davey 的ppt(blog和slide share)
      Java Performance     itpub 上面可读 英文原版 
      <<深入jvm>>,<<jvm specification>><<高级编译器设计与实现>>
