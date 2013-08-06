@@ -70,6 +70,8 @@ blue davey 的ppt(blog和slide share)
 java.lang.Instrument
 jmm内存模型保证引用替换后的原子操作?
 btrace
+VisualVm
+agent
 jvm 字符串填充率 回头看下 
 new String 几个对象,R大帖子
 intern的细节
@@ -194,6 +196,7 @@ ror 有几个很优秀的前端视频
 图片预占位
 bigpipe
 复杂页面 
+backbone.js
 
 
 # 如何设计高可用,高扩展,高性能的网站
