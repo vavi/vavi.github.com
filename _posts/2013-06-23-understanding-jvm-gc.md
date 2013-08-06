@@ -107,7 +107,6 @@ Waht:在 标记-清除算法基础了,增加了内存整理动作,将所有存�
 该章节见另一篇[JVM启动参数](/2013/07/07/java-jvm-option/) 
 
 
-
 UseSerialGC is "Serial" + "Serial Old"
 UseParNewGC is "ParNew" + "Serial Old"
 UseConcMarkSweepGC is "ParNew" + "CMS" + "Serial Old". "CMS" is used most of the time to collect the tenured generation. "Serial Old" is used when a concurrent mode failure occurs.
