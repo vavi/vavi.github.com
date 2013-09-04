@@ -28,5 +28,13 @@ free -m 的误区
 
 事务不断变化,发展的本质.看完effective java不知道看啥了.
 
+jira宕机后,后台一直抱无法获得新connection错误,直接sqlplus xx/xx@xx 非常缓慢, 经过检查日志,发现后台抱xxx错误,经过google,发现listener日志文件过大, lsnrctl off , start ,然后就恢复了.
+
+性能问题和故障定位
+
+1.启动时死锁,生成多个线程,quartz查询数据   触发加载hibernate的buildSessionFactory,会使用hibernate的annatation的加载,导致hashMap死循环. 解决方法 static holder, 构造方法中加载, 自定义加载hbm.xml , 容器的listener加载顺序.
+
+系统cpu,系统内存,disk io,网卡优化,socket io 目前没遇到过. 各核状态, 高可能是cas,cpu use,但是sys 高 ,可能是线程过多.  jvm 堆内存(各区溢出情况,mat使用技巧(1.history配置打开2.incoming/outcoming 3. shortest gc path 4.hashmap,string 扩容等),), jvm 线程 ,内存 dump 分析.  半夜定时触发gc , jvisualvm btrace
+
 
 {% include JB/setup %}
