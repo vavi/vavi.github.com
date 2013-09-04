@@ -228,7 +228,7 @@ AI
 # TODO
 weak reference
 整数加减乘除 编译原理实现 支持括号 后缀表达式
-String.intern 的不同版本的表现,1.7中还有方法区吗?
+String.intern 的不同版本的表现,1.7中还有方法区吗? substring 在1.6,1.7表现不同
 springside
    
 

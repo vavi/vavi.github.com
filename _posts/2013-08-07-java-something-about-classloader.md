@@ -27,5 +27,8 @@ Thread的currentContextLoader默认和父线程的currentContextLoader相同.Jav
 
 clazz.getResource 会区分"/name"和"name",因为其内部实现会调用reslove方法,最终再调用classloader.getResource方法.再补充一句,由于clazz.getResource的返回值是URL,而有些同学为了获得路径,会显示对URL进行toString后,然后在针对file等进行判断;其实,比较好的方式是调用new File(URL.toURI).getPath 方法.
 
+# 参考
+http://www.javaworld.com/javaworld/javaqa/2003-06/01-qa-0606-load.html
+
 
 {% include JB/setup %}
