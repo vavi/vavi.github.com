@@ -306,11 +306,58 @@ synchronized (new Object()) {}
 
 
 
+临界区是访问一个共享资源在同一时间不能被超过一个线程执行的代码块。
+当一个线程想要访问一个临界区,它使用其中的一个同步机制来找出是否有任何其他线程执行临界 区。如果没有，这个线程就进入临界区。否则，这个线程通过同步机制暂停直到另一个线程执行完临界区。当多个线程正在等待一个线程完成执行的一个临界 区，JVM选择其中一个线程执行，其余的线程会等待直到轮到它们。
+from:http://ifeve.com/basic-thread-synchronization-1/
+
+ThreadLocal.initialValue
+
+InheritableThreadLocal 类提供线程创建线程的值的遗传性 。如果线程A有一个本地线程变量，然后它创建了另一个线程B，那么线程B将有与A相同的本地线程变量值。 你可以覆盖 childValue() 方法来初始子线程的本地线程变量的值。 它接收父线程的本地线程变量作为参数。
+
+它是基于Lock接口和实现它的类（如ReentrantLock）。这种机制有如下优势：
+
+它允许以一种更灵活的方式来构建synchronized块。使用synchronized关键字，你必须以结构化方式得到释放synchronized代码块的控制权。Lock接口允许你获得更复杂的结构来实现你的临界区。
+Lock 接口比synchronized关键字提供更多额外的功能。新功能之一是实现的tryLock()方法。这种方法试图获取锁的控制权并且如果它不能获取该锁，是因为其他线程在使用这个锁，它将返回这个锁。使用synchronized关键字，当线程A试图执行synchronized代码块，如果线程B正在执行它，那么线程A将阻塞直到线程B执行完synchronized代码块。使用锁，你可以执行tryLock()方法，这个方法返回一个 Boolean值表示，是否有其他线程正在运行这个锁所保护的代码。
+当有多个读者和一个写者时，Lock接口允许读写操作分离。
+Lock接口比synchronized关键字提供更好的性能。
+
+一个锁可能伴随着多个条件。这些条件声明在Condition接口中。 这些条件的目的是允许线程拥有锁的控制并且检查条件是否为true，如果是false，那么线程将被阻塞，直到其他线程唤醒它们。Condition接口提供一种机制，阻塞一个线程和唤醒一个被阻塞的线程。
+
+所 有Condition对象都与锁有关，并且使用声明在Lock接口中的newCondition()方法来创建。使用condition做任何操作之前， 你必须获取与这个condition相关的锁的控制。所以，condition的操作一定是在以调用Lock对象的lock()方法为开头，以调用相同 Lock对象的unlock()方法为结尾的代码块中。
+
+当一个线程在一个condition上调用await()方法时，它将自动释放锁的控制，所以其他线程可以获取这个锁的控制并开始执行相同操作，或者由同个锁保护的其他临界区。
+
+注释：当一个线程在一个condition上调用signal()或signallAll()方法，一个或者全部在这个condition上等待的线程将被唤醒。这并不能保证的使它们现在睡眠的条件现在是true，所以你必须在while循环内部调用await()方法。你不能离开这个循环，直到 condition为true。当condition为false，你必须再次调用 await()方法。
+
+你必须十分小心 ，在使用await()和signal()方法时。如果你在condition上调用await()方法而却没有在这个condition上调用signal()方法，这个线程将永远睡眠下去。
+
+在调用await()方法后，一个线程可以被中断的，所以当它正在睡眠时，你必须处理InterruptedException异常。
+
+--线程执行者
+Executor-->ExecutorService-->AbstractExecutorService-->ThreadPoolExecutor
+Executors 主要是ThreadPoolExecutor和
+几种方法差别,线程池大小和队列不同.
+
+当你想要取消你已提交给执行者的任务，使用Future接口的cancel()方法。根据cancel()方法参数和任务的状态不同，这个方法的行为将不同：
+
+如果这个任务已经完成或之前的已被取消或由于其他原因不能被取消，那么这个方法将会返回false并且这个任务不会被取消。
+如果这个任务正在等待执行者获取执行它的线程，那么这个任务将被取消而且不会开始它的执行。如果这个任务已经正在运行，则视方法的参数情况而定。 cancel()方法接收一个Boolean值参数。如果参数为true并且任务正在运行，那么这个任务将被取消。如果参数为false并且任务正在运行，那么这个任务将不会被取消。
+
+如果你想要等待一个任务完成，你可以使用以下两种方法：
+
+如果任务执行完成，Future接口的isDone()方法将返回true。
+ThreadPoolExecutor类的awaitTermination()方法使线程进入睡眠，直到每一个任务调用shutdown()方法之后完成执行。
+这两种方法都有一些缺点。第一个方法，你只能控制一个任务的完成。第二个方法，你必须等待一个线程来关闭执行者，否则这个方法的调用立即返回。
 
 
+Java提供了你可以在你的并发程序中使用的，而且不会有任何问题或不一致的数据集合。基本上，Java提供两种在并发应用程序中使用的集合：
 
+阻塞集合：这种集合包括添加和删除数据的操作。如果操作不能立即进行，是因为集合已满或者为空，该程序将被阻塞，直到操作可以进行。
+非阻塞集合：这种集合也包括添加和删除数据的操作。如果操作不能立即进行，这个操作将返回null值或抛出异常，但该线程将不会阻塞。
 
-
+阻塞 异步  http://www.zhihu.com/question/19732473
+iteye帖子 
+http://www.ibm.com/developerworks/cn/linux/l-async/
 
 
 工作内
