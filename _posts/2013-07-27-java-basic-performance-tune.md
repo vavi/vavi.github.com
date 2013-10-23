@@ -76,9 +76,9 @@ BTRACE
 表结构设计不合理,没有适当荣誉
 paypal架构  
 
-free -m 的误区 
+free -m 的误区 ,top 1各核使用状态,shift+m 内存使用排序
 
-对操作系统的理解
+对操作系统的理解,更底层细粒度的性能调优需要看下vtune,算法和汇编.
 
 寻找瓶颈点,三个方面验证, 内存,线程和业务日志要互相对应. 
 连接超时和缓存
@@ -92,6 +92,8 @@ jira宕机后,后台一直抱无法获得新connection错误,直接sqlplus xx/xx
 1.启动时死锁,生成多个线程,quartz查询数据   触发加载hibernate的buildSessionFactory,会使用hibernate的annatation的加载,导致hashMap死循环. 解决方法 static holder, 构造方法中加载, 自定义加载hbm.xml , 容器的listener加载顺序.
 
 系统cpu,系统内存,disk io,网卡优化,socket io 目前没遇到过. 各核状态, 高可能是cas,cpu use,但是sys 高 ,可能是线程过多.  jvm 堆内存(各区溢出情况,mat使用技巧(1.history配置打开2.incoming/outcoming 3. shortest gc path 4.hashmap,string 扩容等),), jvm 线程 ,内存 dump 分析.  半夜定时触发gc , jvisualvm btrace
+
+对象大小,对象头. infoq的几篇文章
 
 参考
 http://www.eecs.berkeley.edu/~rcs/research/interactive_latency.html
