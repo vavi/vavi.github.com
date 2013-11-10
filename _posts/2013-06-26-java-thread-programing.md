@@ -457,13 +457,80 @@ cas无阻塞,不会导致context switch
 	* TIMED_WAITING
   * 阻塞和执行很长时间操作的区别
   	* 被阻塞的线程必须等待某个不受它控制的事件结束后才能继续执行.线程被置回RUNNABLE状态,并可以被继续调度执行
-  * 中断异常
+  * 中断
     * 当方法抛出InterruptedException,表明该方法可以被中断.当该方法被中断时,它将努力提前结束等待状态.
-  	
+    * 中断是一种协作机制.一个线程不能强迫其他线程停止正在执行的操作而去执行其他操作.
+    * 处理中断
+      * 传递IE
+      * 恢复中断状态
+
+* 同步工具类
+  * CountDownLatch(闭锁)
+  	* Latch 译为 门闩
+    * 简单理解:一开始,该Latch时关闭的.内部有个计数器,每调用一次countDown方法,计数器减一.当计数器为0时,该Latch打开,在latch上await的线程可以继续执行.当Latch打开后,其状态不会再改变.(也就是说,要新建一个CountDownLatch实例才能完成相同功能)
+    * 通常用于确保某些活动在其他活动都完成后才继续执行.
+    * 实例伪码
+    
+    ```
+    	CountDownLatch latch = new CountDownLatch(10);
+    	
+    	Thread t = new Runnable({ public void run(){ 
+    		latch.await;
+    		task.run();
+    	
+    	} })
+    	t.start;
+    	latch.countDown();
+    
+    ```
+    
+    
+  * CyclicBarrier
+    * 所有线程必须都已经到达栅栏(或者await调用超时或者被中断),才能开始继续进行.
+    * vs CountDownLatch
+      * Barrier 等待所有线程到达栅栏处,比如统计运动员的比赛成绩
+      * Latch 主要取决于刚开始计数器的大小以及countDown方法的调用次数
+      * Barrier计数器可以重置,Latch内置计数器不可以
+  * FutureTask
+    * 常用于并行计算  
+    * 任务状态
+      * 等待运行
+      * 正在运行
+      * 完成运行
+        * 任务正常完成结束
+        * 任务异常结束
+        * 取消任务执行
+        * 任务执行超时
+    * 使用FutureTask.get
+    * 处理异常
+  * Semaphore
+    * 常用于控制同时访问某个特定资源/执行特定操作的数量(比如连接池)
+    * 使用acquire来获得(占用)许可(如果没有许可将阻塞);使用release来释放许可
+    * 不可重入
+  
+ # 一次缓存长时间计算过程的重构过程
+ 
+   * 实例HashMap,使用同步方法进行计算,如果map中没有,则进行计算,否则返回计算结果
+     * 问题
+       * 只能有一个线程执行计算方法,导致可伸缩性问题
+   * 使用ConcurrentHashMap代替加锁的HashMap
+     * 伪码
+     	`if(null !=chm.get(key)) {result = computer(); chm.put(result); }  ` 
+     * 问题
+       * 可能导致多个线程重复多次执行计算,浪费计算资源
+   * 使用FutureTask + CHM.put
+     * 问题
+       * 仍然会导致重复计算,但是重复计算概率比前者小很多.因为前者必须等待计算完成后,才能放到chm中.而后者可以先把futureTask放到chm中,中间间隔小.
+   * 使用FutureTask+CHM.putIfAbsent
+     * 完美解决上述问题
+     * 附带说明,<<Java并发编程实战>>P89书中的while(true)主要用来解决当发生cancel或者执行异常时,再次尝试计算.这个在实际中,一般不建议使用,很可能导致死循环.百度       
+      
 
 # 参考
 1. http://ifeve.com/ ,并发编程网
 2. http://www.searchtb.com/2011/06/spinlock%E5%89%96%E6%9E%90%E4%B8%8E%E6%94%B9%E8%BF%9B.html
 3. cas vs sync (只有这2种?) 
-4. java 并发编程实践
+4. Java 并发编程实战
+5. 理解aqs后,回来再看各种concurrent实现原理
+6. 中断
 {% include JB/setup %}

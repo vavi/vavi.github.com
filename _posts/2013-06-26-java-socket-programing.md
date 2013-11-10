@@ -72,6 +72,13 @@ SOCKET API并没有对外公布底层的listen 方法
 backLog
 
 ## NIO SOCKET
+
+TCP通讯需要操作系统支持
+传统socket采用per connection per thread 来提升性能
+在NIO,由于网络传递数据的速度远远低于cpu的处理速度.并且传递的数据通常放到tcp的协议栈缓存中. 操作系统知道哪些socket的数据包已经准备好了,这样周期性的调用操作系统的Selector.select方法,获取数据准备好的连接.然后针对连接,再从中获取SelectionKey的读写等intOps,进行数据处理.
+
+阻塞,异步  见知乎 ,主要区别是阻塞,非阻塞都是同步的.阻塞通常是因为外部原因(比如等待io或者网络,线程锁 等原因).
+
 NIO优于IO的是因为: 底层OS使用面向块的,可以重复读取.
 
 NIO SOCKET(单个线程管理所有SOCKET的连接,当该SOCKET的数据准备好后,它再通知应用程序进行处理) 优于传统SOCKET(PER CONNECTION PER THREAD) 的原因是因为 在高并发下,每个线程占用1m内存(由-xss参数指定内存大小).**占用内存较大**.另外,是由于socket 在read inputstream 和 write ouputstream时容易因为网络慢而阻塞,导致系统来回切换线程上下文(**切换上下文开销较大**)
