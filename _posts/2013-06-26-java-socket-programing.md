@@ -91,6 +91,10 @@ NIO SOCKET(单个线程管理所有SOCKET的连接,当该SOCKET的数据准备�
 流 vs 缓冲区 
 对数据流使用缓冲,能够极大地提升网络程序的性能.
 
+ 
+请注意DatagramChannel和SocketChannel实现定义读和写功能的接口而ServerSocketChannel不实现。ServerSocketChannel负责监听传入的连接和创建新的SocketChannel对象，它本身从不传输数据。在我们具体讨论每一种socket通道前，您应该了解socket和socket通道之间的关系。之前的章节中有写道，通道是一个连接I/O服务导管并提供与该服务交互的方法。就某个socket而言，它不会再次实现与之对应的socket通道类中的socket协议API，而java.net中已经存在的socket通道都可以被大多数协议操作重复使用。全部socket通道类（DatagramChannel、SocketChannel和ServerSocketChannel）在被实例化时都会创建一个对等socket对象。这些是我们所熟悉的来自java.net的类（Socket、ServerSocket和DatagramSocket），它们已经被更新以识别通道。对等socket可以通过调用socket( )方法从一个通道上获取。此外，这三个java.net类现在都有getChannel( )方法。虽然每个socket通道（在java.nio.channels包中）都有一个关联的java.net socket对象，却并非所有的socket都有一个关联的通道。如果您用传统方式（直接实例化）创建了一个Socket对象，它就不会有关联的SocketChannel并且它的getChannel( )方法将总是返回null。Socket通道委派协议操作给对等socket对象。如果在通道类中存在似乎重复的socket方法，那么将有某个新的或者不同的行为同通道类上的这个方法相关联。3.5.1 非阻塞模式Socket通道可以在非阻塞模式下运行。这个陈述虽然简单却有着深远的含义。传统Java socket的阻塞性质曾经是Java程序可伸缩性的最重要制约之一。非阻塞I/O是许多复杂的、高性能的程序构建的基础。要把一个socket通道置于非阻塞模式，我们要依靠所有socket通道类的公有超级类：SelectableChannel。下面的方法就是关于通道的阻塞模式的： public abstract class SelectableChannel extends AbstractChannel implements Channel { // This is a partial API listing public abstract void configureBlocking (boolean block) throws IOException; public abstract
+
+
 在NIO中,缓冲区已经成为NIO的基础部分,读写数据流时,必须通过缓冲区(OIO中可以直接读写流). 在native 实现中,可以将缓冲区直接与硬件或内存联系起来,或者使用其他非常高效的实现.
 
 从编程角度来看,流基于字节,通道基于块.流的基本概念都是一次传送一个字节数据,通道是传送缓冲区的数据块.
