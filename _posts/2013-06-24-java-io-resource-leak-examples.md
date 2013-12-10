@@ -3,7 +3,7 @@ layout: post
 title: "JAVA IO 句柄泄露案例分析"
 description: ""
 category: 
-tags: [J2SE-IO]
+tags: [案例分析]
 ---
 **示例伪码:**
 
