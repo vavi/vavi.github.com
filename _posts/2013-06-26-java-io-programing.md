@@ -102,6 +102,7 @@ I/O 字节流必须顺序存取，常见的例子有 TTY（控制台）设备、
 ### Buffer
 每个非布尔原始数据类型都有一个缓冲区类,即为ByteBuffer、CharBuffer、DoubleBuffer、FloatBuffer、IntBuffer、LongBuffer、ShortBuffer。
 
+====
 #### Buffer的四个属性
 
 所有的缓冲区都具有四个属性来提供关于其所包含的数据元素的信息。它们是：
@@ -113,6 +114,7 @@ I/O 字节流必须顺序存取，常见的例子有 TTY（控制台）设备、
 **
 5. 这4个属性大小关系满足： mark <=position <=limit<=capacity
 
+====
 #### Buffer的重要方法
 
 1. flip()：该方法通常是读取读取后,完成将数据写到buffer中；然后在需要将buffer的数据读出来,供应用程序使用；**如果通道现在在缓冲区上执行get()，那么它将从我们刚刚插入的有用数据之外取出未定义数据**，所以这个时候就需要先调用flip方法,将limit=position,position=0,mark=-1，这样就可以使程序顺利的从第position个位置开始读数据。其效果基本等同于`buffer.limit(buffer.position()).position(0);`
@@ -130,12 +132,14 @@ Channel的常见实现类如下：
 
 由于本文主要讲Disk IO，所以重点介绍FileChannel，其他3类会略带提过。
 
+====
 #### 如何创建FileChannel对象
 
 不能直接创建 FileChannel 对象,后3种可以通过调用相应里地类方法open进行创建Channel对象。FileChannel对象却只能通过在一个打开的RandomAccessFile、FileInputStream或FileOutputStream对象上调用getChannel( )方法来获取。
 
 Channels 提供了将流和通道之间的互相转换API。
 
+====
 #### 为什么FileChannel总是阻塞的
  
 **最主要原因是文件IO延迟较少**，详细见下分析：
@@ -148,14 +152,23 @@ Channels 提供了将流和通道之间的互相转换API。
 
 ====
 #### FileChannel的重要方法
- 1. force(boolean metaData):将数据强制刷新到本次存储设备上,这对确保在系统崩溃时不会丢失重要信息特别有用。metaData 参数可用于限制此方法必需执行的 I/O 操作数量。为此参数传入 false 指示只需将对文件内容的更新写入存储设备；传入 true 则指示必须写入对文件内容和元数据的更新，这通常需要一个以上的 I/O 操作。此参数是否实际有效取决于底层操作系统，因此是未指定的。
+ 1. force(boolean metaData):该方法将数据强制刷新到本次存储设备上,这对确保在系统崩溃时不会丢失重要信息特别有用。metaData 参数可用于限制此方法必需执行的 I/O 操作数量。为此参数传入 false 指示只需将对文件内容的更新写入存储设备；传入 true 则指示必须写入对文件内容和元数据的更新，这通常需要一个以上的 I/O 操作。此参数是否实际有效取决于底层操作系统，因此是未指定的。
+2. map(MapMode, long, long):将此通道的文件区域直接映射到内存中,并返回MappedByteBuffer(通常是DirectByteBuffer)。仅建议在读写相对较大的文件时使用此方法,读写小文件时建议使用read/write方法。可以调用DirectByteBuffer的接口方法clean来及时回收内存。
+3. transferTo(long, long, WritableByteChannel):该方法内部使用了zero-copy机制，避免了不必要的上下文切换开销和缓存区数据复制开销，能够极大的提高传输文件能力。详见参考链接。
+
 
 ====
 #参考
 http://ifeve.com/java-nio-all/
+
 http://blog.csdn.net/historyasamirror/article/details/5778378
+
 http://www.ibm.com/developerworks/cn/java/j-lo-javaio/
+
 http://blog.csdn.net/tabactivity/article/details/9317143
+
 <<Java NIO>>,概述部分总结的相当精彩,后面有些章节翻译的比较粗糙.
+
+http://www.ibm.com/developerworks/cn/java/j-zerocopy/,通过零拷贝实现有效数据传输
 
 {% include JB/setup %}
