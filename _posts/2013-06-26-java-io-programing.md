@@ -167,7 +167,7 @@ http://www.ibm.com/developerworks/cn/java/j-lo-javaio/
 
 http://blog.csdn.net/tabactivity/article/details/9317143
 
-<<Java NIO>>,概述部分总结的相当精彩,后面有些章节翻译的比较粗糙.
+Java NIO,概述部分总结的相当精彩,后面有些章节翻译的比较粗糙.
 
 http://www.ibm.com/developerworks/cn/java/j-zerocopy/,通过零拷贝实现有效数据传输
 

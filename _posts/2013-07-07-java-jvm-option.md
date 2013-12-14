@@ -14,7 +14,7 @@ UseConcMarkSweepGC is "ParNew" + "CMS" + "Serial Old". "CMS" is used most of the
 UseParallelGC is "Parallel Scavenge" + "Serial Old"
 UseParallelOldGC is "Parallel Scavenge" + "Parallel Old"
 
- 
+ R大的iteye 参数坑
 
 ====
 
