@@ -158,7 +158,7 @@ A说：好吧（关闭听筒）
 ## 吐槽
 1. Socket.getPort(),Socket.getInetAddress() 方法名get后面加个Remote该多好。
 2. Java 网络编程 404 页吐槽:"为什么JAVA NIO的方法没有遵守 getter/setter 的命名方式?我无法解释.这点遭受到JCP的极力谴责"
-3. Socket类为什么名称不是ClientSocket，与ServerSocket相对应？原因是因为，ServerSocket负责监听传入的连接和创建新的Socket对象，它本身从不传输数据。也就是说，Socket这个类作为服务端ServerSocket.accept() 方法执行结果。
+3. Socket类为什么名称不是ClientSocket，与ServerSocket相对应？原因是，ServerSocket负责监听传入的连接和创建新的Socket对象，它本身从不传输数据。也就是说，Socket这个类作为服务端ServerSocket.accept() 方法执行结果，在服务端被共用。
 
 ===
 ## 参考
