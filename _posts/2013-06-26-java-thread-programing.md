@@ -1,12 +1,48 @@
 ---
 layout: post
-title: "Java多线程编程"
+title: "JAVA学习笔记--4.多线程编程"
 description: "Java多线程编程"
 category: 
-tags: [J2SE]
+tags: [JAVA学习笔记]
 ---
 
+## 什么是多线程
+轻量级进程
+## 多线程带来的好处
+## 多线程编程需要考虑的一些底层基础知识
+### CPU多核
+### CPU乱序执行
+### 编译器优化
+### False Sharing
+### JMM
+#### 可见性
+从这个角度来解释 MESI
+#### infoq的文章
+## 一些基本说明
+### synchroized
+锁的对象
+线程间通信
+	为什么要加锁 synchronized（lock）？
+原子服务的组合服务还原子吗
+### voliatile
+何登成blog c区别
+v++；
+### Lock
+### CAS
+### RING BUFFER
+### STM
+## 典型线程库讲解
+InteruptedException
+HashTable
+HashMap
+Collections.synchronized
+ConncurrentHashMap
+BlockingQueue
+Unfafe
+LockSupport
 
+ABS
+ThreadLocal （不共享）
 
 # 基础篇
 1. 简单锁示例,避免虚假唤醒,使用自旋锁,使等待的线程处于wait状态,等待被notify,而不是处于等待获得锁状态,非重入锁.
