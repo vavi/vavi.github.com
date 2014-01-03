@@ -68,4 +68,6 @@ synchronized (new Object()) {}
 
 而锁还有读写锁,公平锁,非公平锁等等
 
+在使用await()和signal()方法时。如果你在condition上调用await()方法而却没有在这个condition上调用signal()方法，这个线程将永远睡眠下去。
+
 {% include JB/setup %}

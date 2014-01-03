@@ -117,41 +117,27 @@ tags: [JAVA学习笔记]
 ---
 
 ### AbstractQueuedSynchronizer
-它是基于Lock接口和实现它的类（如ReentrantLock）。这种机制有如下优势：
 
-它允许以一种更灵活的方式来构建synchronized块。使用synchronized关键字，你必须以结构化方式得到释放synchronized代码块的控制权。Lock接口允许你获得更复杂的结构来实现你的临界区。
-Lock 接口比synchronized关键字提供更多额外的功能。新功能之一是实现的tryLock()方法。这种方法试图获取锁的控制权并且如果它不能获取该锁，是因为其他线程在使用这个锁，它将返回这个锁。使用synchronized关键字，当线程A试图执行synchronized代码块，如果线程B正在执行它，那么线程A将阻塞直到线程B执行完synchronized代码块。使用锁，你可以执行tryLock()方法，这个方法返回一个 Boolean值表示，是否有其他线程正在运行这个锁所保护的代码。
-当有多个读者和一个写者时，Lock接口允许读写操作分离。
-Lock接口比synchronized关键字提供更好的性能。
+java.util.concurrent.locks.Lock接口允许以一种更灵活的方式来构建synchronized块。它比synchronized关键字更加强大，详细如下。
 
-一个锁可能伴随着多个条件。这些条件声明在Condition接口中。 这些条件的目的是允许线程拥有锁的控制并且检查条件是否为true，如果是false，那么线程将被阻塞，直到其他线程唤醒它们。Condition接口提供一种机制，阻塞一个线程和唤醒一个被阻塞的线程。
+* tryLock，非阻塞性的尝试获取锁，如果获取失败，可以立即进行其他处理。
+* tryLock(long time, TimeUnit unit)，在一定时间范围内尝试获取锁，如果在指定时间范围内获取失败，则可以再进行其他处理。
+* lockInterruptibly，阻塞性地获取锁，但是允许在阻塞的过程中，被中断。
+* Lock接口比synchronized关键字提供更好的性能。
 
-所 有Condition对象都与锁有关，并且使用声明在Lock接口中的newCondition()方法来创建。使用condition做任何操作之前， 你必须获取与这个condition相关的锁的控制。所以，condition的操作一定是在以调用Lock对象的lock()方法为开头，以调用相同 Lock对象的unlock()方法为结尾的代码块中。
+ReentrantLock，CountDownLatch，FutureTask等类都有一个内部类Sync，该Sync类继承了AbstractQueuedSynchronizer(下文简称AQS)。该AQS相当于实现了一个模板模式，把一些独特操作委托给子类实现。这也就是AQS为什么强大的内在原因。
 
-当一个线程在一个condition上调用await()方法时，它将自动释放锁的控制，所以其他线程可以获取这个锁的控制并开始执行相同操作，或者由同个锁保护的其他临界区。
+AQS使用了Lock-Free的算法，底层使用了Unsafe类CAS操作改变同步器的state的值，并依据state的值和Node状态来park还是unpark线程。
 
-注释：当一个线程在一个condition上调用signal()或signallAll()方法，一个或者全部在这个condition上等待的线程将被唤醒。这并不能保证的使它们现在睡眠的条件现在是true，所以你必须在while循环内部调用await()方法。你不能离开这个循环，直到 condition为true。当condition为false，你必须再次调用 await()方法。
+为了解决锁竞争的问题，采用了FIFO的Node队列。该队列是一个双向链表结构，当锁竞争失败时，把代表线程的Node加到tail节点上；当释放锁时，从head节点移除代表线程的Node。
 
-你必须十分小心 ，在使用await()和signal()方法时。如果你在condition上调用await()方法而却没有在这个condition上调用signal()方法，这个线程将永远睡眠下去。
+AQS#state在下文的Mutex类中用来标识资源的可用情况，0标识资源可用，1标识资源被占用，即不可用。
 
-在调用await()方法后，一个线程可以被中断的，所以当它正在睡眠时，你必须处理InterruptedException异常。
-#### 背景知识
-##### 双向链表的不变式
+AQS#Node队列是一个CLH队列的变种。waitStatus用来标识线程是否需要被block。当前驱节点释放锁时，则当前节点需要被通知（**sigal**），以便解除阻塞状态，从而进行运行。
 
-不变式：4个，见LinkedList
-
-#### 概要说明
-具体差异操作委托给Sync类
-两个链表，NND.
-
+Node#waitStatus 这个用来标识节点的状态。在详细介绍之前，先要看下这个类的基本结构以及类的说明。
+  
 #### 源码分析
-##### Node 模式
-
-waitstatus 说法 
-Node 数据结构
-state说明，见docx
-clh
-其实没那么吓人
 
 ```
 class Mutex implements Lock, java.io.Serializable {
@@ -214,11 +200,11 @@ class Mutex implements Lock, java.io.Serializable {
     }
 ```
 
-tryAcquire TODO 增强描述下
+tryAcquire 见Mutex类中的代码注释。
 
-在标记1处，tryAcquire(1)如果能够成功获取锁，那么!tryAcquire(1)返回false；此时发生and短路操作，acquire方法成功执行
+在标记1处，tryAcquire(1)如果能够成功获取锁，那么!tryAcquire(1)返回false；此时发生and短路操作，acquire方法成功执行。
 
-在标记1处，tryAcquire(1)如果获取锁失败，那么!tryAcquire(1)返回true；此时继续执行标记2的代码
+在标记1处，tryAcquire(1)如果获取锁失败，那么!tryAcquire(1)返回true；此时继续执行标记2的代码。
 
 在标记2处，addWaiter表示将当前线程代表的节点加到等待队列中去；acquireQueued表示，既然这个节点加入到等待队列后，那么再次尝试获取锁。如果此时还是获取失败，那么我就调用park方法阻塞该线程。下面再详细介绍addWaiter和acquireQueued方法。
 
@@ -348,9 +334,58 @@ tryAcquire TODO 增强描述下
     }
 ```
 
-cancelAcquire TODO
+`acquireInterruptibly`这方法在等待获取锁时，如果发生中断，则抛出InterruptedException；基本都同`acquire`方法。
 
-至此，完整的分析了Mutex的lock方法。
+`doAcquireNanos(int arg, long nanosTimeout)`这个方法需要说一下的时，如果nanosTimeout小于spinForTimeoutThreshold，则相当于是不会执行park方法；另外这个时间是非精确值，每次计算后，在和当前时间比较。
+
+当线程发生中断或者超时后，会调用`cancelAcquire` 方法（但是我认为普通的acquire方法是不会触发调用`cancelAcquire`方法的，因为其只有一个return出口）。
+
+```
+private void cancelAcquire(Node node) {
+        // Ignore if node doesn't exist
+        if (node == null)
+            return;
+
+        node.thread = null;
+
+        // Skip cancelled predecessors
+        Node pred = node.prev;
+        while (pred.waitStatus > 0)
+            node.prev = pred = pred.prev;
+
+        // predNext is the apparent node to unsplice. CASes below will
+        // fail if not, in which case, we lost race vs another cancel
+        // or signal, so no further action is necessary.
+        Node predNext = pred.next;
+
+        // Can use unconditional write instead of CAS here.
+        // After this atomic step, other Nodes can skip past us.
+        // Before, we are free of interference from other threads.
+        node.waitStatus = Node.CANCELLED;//设置取消状态
+
+        // If we are the tail, remove ourselves.
+        if (node == tail && compareAndSetTail(node, pred)) {
+            compareAndSetNext(pred, predNext, null);
+        } else {
+            // If successor needs signal, try to set pred's next-link
+            // so it will get one. Otherwise wake it up to propagate.
+            int ws;
+            if (pred != head &&
+                ((ws = pred.waitStatus) == Node.SIGNAL ||
+                 (ws <= 0 && compareAndSetWaitStatus(pred, ws, Node.SIGNAL))) &&
+                pred.thread != null) {
+                Node next = node.next;
+                if (next != null && next.waitStatus <= 0)
+                    compareAndSetNext(pred, predNext, next);
+            } else {
+                unparkSuccessor(node);
+            }
+
+            node.next = node; // help GC
+        }
+    }
+```
+
 
 #### 分析Mutex#unlock方法
 
@@ -369,7 +404,7 @@ tryRelease的实现同tryAcquire，不用赘述。
         return false;
     }
 ```
-`if (ws < 0) compareAndSetWaitStatus(node, ws, 0);` 
+`if (ws < 0) compareAndSetWaitStatus(node, ws, 0);` 将节点恢复到默认状态，
 
 ```
 	    private void unparkSuccessor(Node node) {
@@ -399,23 +434,14 @@ tryRelease的实现同tryAcquire，不用赘述。
             LockSupport.unpark(s.thread);
     }
 ```
-
-
-
-```
-ConditionObject
-```
-
-```
-
-```
+ 
+本段落最后，ConditionObject，读写锁以后再分析，给自己再挖一个坑。TODO
 
 ---
 
 ## 线程Executor框架
 ### 解决了下面几个问题
-* 线程生命周期管理开销高
-* 大量线程消耗CPU和内存资源
+* 线程生命周期管理（创建和销毁）开销高
 * 无限制创建线程可能导致系统资源不足,报OOM错误
 ### 功能
 * 基于生产者,消费者模式,将任务提交和任务执行的过程分离
@@ -424,22 +450,10 @@ ConditionObject
 * 支持性能监控机制
 * 支持多种线程执行策略
 ### Executors的主要线程池介绍
- 
- ### 线程执行者
-Executor-->ExecutorService-->AbstractExecutorService-->ThreadPoolExecutor
-Executors 主要是ThreadPoolExecutor和
-几种方法差别,线程池大小和队列不同.
+  
+类接口关系，Executor-->ExecutorService-->AbstractExecutorService-->ThreadPoolExecutor。不得不吐槽下，Executor，ExecutorService命名不足以区分其内涵，我现在依旧傻傻分不清楚。
 
-当你想要取消你已提交给执行者的任务，使用Future接口的cancel()方法。根据cancel()方法参数和任务的状态不同，这个方法的行为将不同：
 
-如果这个任务已经完成或之前的已被取消或由于其他原因不能被取消，那么这个方法将会返回false并且这个任务不会被取消。
-如果这个任务正在等待执行者获取执行它的线程，那么这个任务将被取消而且不会开始它的执行。如果这个任务已经正在运行，则视方法的参数情况而定。 cancel()方法接收一个Boolean值参数。如果参数为true并且任务正在运行，那么这个任务将被取消。如果参数为false并且任务正在运行，那么这个任务将不会被取消。
-
-如果你想要等待一个任务完成，你可以使用以下两种方法：
-
-如果任务执行完成，Future接口的isDone()方法将返回true。
-ThreadPoolExecutor类的awaitTermination()方法使线程进入睡眠，直到每一个任务调用shutdown()方法之后完成执行。
-这两种方法都有一些缺点。第一个方法，你只能控制一个任务的完成。第二个方法，你必须等待一个线程来关闭执行者，否则这个方法的调用立即返回。
 
 
 | 方法名称 | 功能说明 | 使用队列 |
@@ -451,8 +465,17 @@ ThreadPoolExecutor类的awaitTermination()方法使线程进入睡眠，直到�
 
 底层都是利用ThreadPoolExecutor的
 
+
+
 ### Callable,Runnable
-* 前者可以返回线程执行的结果FutureTask,后者则不可以.
+前者可以返回线程执行的结果FutureTask,后者则不可以.
+
+当你想要取消你已提交给执行者的任务，使用Future接口的cancel()方法。根据cancel()方法参数和任务的状态不同，这个方法的行为将不同：
+
+如果这个任务已经完成或之前的已被取消或由于其他原因不能被取消，那么这个方法将会返回false并且这个任务不会被取消。如果这个任务正在等待执行者获取执行它的线程，那么这个任务将被取消而且不会开始它的执行。
+
+如果这个任务已经正在运行，则视方法的参数情况而定。 cancel()方法接收一个Boolean值参数。如果参数为true并且任务正在运行，那么这个任务将被取消。如果参数为false并且任务正在运行，那么这个任务将不会被取消。
+
 * FutureTask
   *  public V get() throws InterruptedException, ExecutionException
   *  public V get(long timeout, TimeUnit unit)
@@ -462,12 +485,7 @@ ThreadPoolExecutor类的awaitTermination()方法使线程进入睡眠，直到�
 * 在批量执行任务的时,前者可以在一旦一个任务完成运行时就可以返回运行结果,然后迭代,最终获得所有任务执行结果;后者则必须等待所有任务完成后才会返回结果.前者响应性更好些.
          
 ---         
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
-### ThreadLocal （不共享）
 
-ThreadLocal.initialValue
-
-InheritableThreadLocal 类提供线程创建线程的值的遗传性 。如果线程A有一个本地线程变量，然后它创建了另一个线程B，那么线程B将有与A相同的本地线程变量值。 你可以覆盖 childValue() 方法来初始子线程的本地线程变量的值。 它接收父线程的本地线程变量作为参数。
  
 ## 参考
 1. [并发编程网](http://ifeve.com/) 
