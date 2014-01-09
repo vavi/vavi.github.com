@@ -44,6 +44,7 @@ tags: [JAVA学习笔记]
 ## 参考
 
 [安全构造对象](http://www.ibm.com/developerworks/java/library/j-jtp0618/index.html)
+
 [当构造函数泄露this指针时](http://blog.csdn.net/liuxuejiang158blog/article/details/12891899)  
 
 
