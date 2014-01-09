@@ -1,9 +1,9 @@
 ---
 layout: post
-title: "java something about classloader"
+title: "JAVA学习笔记--5.类加载器"
 description: ""
-category: 
-tags: []
+category: JAVA学习笔记
+tags: [JAVA学习笔记]
 ---
 关于Java的CLassLoader,这篇文章 [深入探讨 Java 类加载器](http://www.ibm.com/developerworks/cn/java/j-lo-classloader/) 写得很不错,我就不再费笔墨重写这些内容了.
 

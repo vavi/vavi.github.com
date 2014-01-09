@@ -1,12 +1,13 @@
 ---
 layout: post
-title: "java basic performance tune"
+title: "常见的宕机问题和性能优化措施"
 description: ""
-category: 
-tags: []
+category: 宕机及优化
+tags: [宕机及优化]
 ---
 # 基础背景知识
 ## 常见时延大小
+
 
 ````
 Latency Comparison Numbers
