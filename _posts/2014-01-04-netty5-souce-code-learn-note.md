@@ -112,7 +112,7 @@ read和write方法都放在Outbound event，这个真让我丈二和尚摸不着
 
 `EventLoop`自身主要新增了 `ChannelHandlerInvoker asInvoker()`方法，它主要负责处理所有I/O操作。
 
-另外，这几个类有点乱，尤其是父接口`EventExecutorGroup`依赖了子接口`EventLoop`，并且感觉这几个类职责并不是很清晰，边界不是很清楚。
+小结下，这几个类有点乱，尤其是父接口`EventExecutorGroup`依赖了子接口`EventLoop`，并且感觉这几个类职责并不是很清晰，边界不是很清楚。
 
 #### Future，ChannelFuture 和 ChannelPromise
 `JUC.Future`<--`Future`<--`ChannelFuture`<--`ChannelPromise`
@@ -146,10 +146,56 @@ Bootstrap这个词在计算机中，通常表示某个框架开始执行的第�
 --- 
  
 ## 服务端启动服务
+### NioEventLoopGroup初始化
+1. `NioEventLoopGroup`初始化父类`MultithreadEventLoopGroup`,触发父类获得默认的线程数，其值默认是`Runtime.getRuntime().availableProcessors() * 2`
+2. 然后接着调用`MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args)`构造方法。依次触发如下步骤：
+	1. 初始化`private final Promise<?> terminationFuture = new DefaultPromise(GlobalEventExecutor.INSTANCE);`属性；里面水较深，后续分析TODO。
+	2. 设置默认DefaultThreadFactory线程工厂，主要做了2件事，设置线程池名称和线程名称
+	3. 初始化children数组，然后通过调用`NioEventLoopGroup.newChild`方法完成child属性设置。这个方法比较重要，先要介绍下：
+		1. 对象继承关系如下，`JUC.AbstractExecutorService`<--`AbstractEventExecutor`<--`SingleThreadEventExecutor`<--`SingleThreadEventLoop`<--`NioEventLoop`
+		2. 然后在类加载时，主要涉及到对象的初始化。其中一个是在`NioEventLoop`的静态块中解决了JDK 的一个bug
+		3. 设置`NioEventLoop.parent`为`NioEventLoopGroup`
+		4. 调用`NioEventLoop.openSelector()`，完成selector初始化
+			1. 初始化`SelectedSelectionKeySet`，设置其属性` keysA = new SelectionKey[1024]; keysB = keysA.clone();`
+			2. 进行了一个优化，设置了`sun.nio.ch.SelectorImpl`的`selectedKeys`和`publicSelectedKeys`属性。用意何在？TODO
+   4. 循环完成children数组的初始化
+3. `NioEventLoopGroup`初始化完毕。   
+
+
+小结：此时结合Eclipse的DEBUG视图，观察bossGroup的属性，可以基本看到完成如下几个事情
+
+* 设置默认线程数和默认线程工厂
+* 设置`NioEventLoop`的selector属性
 
 ---
 
-## 客户端发送数据
+### ServerBootstrap 初始化
+	ServerBootstrap b = new ServerBootstrap();
+    b.group(bossGroup, workerGroup)
+    .channel(NioServerSocketChannel.class)
+    .childHandler(new TelnetServerInitializer());	
+SHANGM这段代码内涵平平，主要设置group属性是bossGroup，childGroup属性是workerGroup。
+没啥其他复杂属性赋值。主要值得一提的就是channel方法的设计。传递class，然后通过反射来实例化具体的Channel实例。
+
+`b.bind(port).sync().channel().closeFuture().sync();`
+
+bind 内部调用`ChannelFuture doBind(final SocketAddress localAddress) `方法，依次完成如下步骤：
+
+1. 开始`NioServerSocketChannel`对象创建
+	1. `Channel`<--`AbstractChannel`<--`AbstractNioChannel`<--`AbstractNioMessageChannel`<--`AbstractNioMessageServerChannel`<--`NioServerSocketChannel	`，类继承关系如上，相对比较清晰。
+	2. `Unsafe`<--`NioUnsafe`<--`AbstractNioUnsafe`<--`NioMessageUnsafe`
+	3. 在`NioServerSocketChannel.newSocket()`调用了`ServerSocketChannel.open()`，完成了javaChannel的创建
+	4. 在`AbstractChannel(Channel parent, EventLoop eventLoop)`中，进行了两个重要操作：` unsafe = newUnsafe();pipeline = new DefaultChannelPipeline(this);`
+	5. 在`AbstractNioChannel`的构造方法中完成了`ch.configureBlocking(false)`了调用
+	6. 在`DefaultServerSocketChannelConfig`中构造方法中完成了channel的参数设置
+2. 至此，完成`NioServerSocketChannel`对象创建。可以看到，创建了javaChannel，设置了是否blocking，初始化了连接参数。
+3. 调用`AbstractBootstrap.init(Channel channel)`方法完成初始化，里面主要涉及到Parent Channel 和 Child Channel的option和attribute 设置，代码类似于` channel.config().setOptions(options);`和`channel.attr(key).set(e.getValue())`，将客户端设置的参数覆盖到默认参数中；最后，还将`childHandler(new TelnetServerInitializer())`中设置的handler加入到pipeline()中
+4. 在`channel.unsafe().register(regFuture);`中把channel 注册到 selector上，主要异步调用`selectionKey = javaChannel().register(eventLoop().selector, 0, this);`；然后接着触发`  pipeline.fireChannelRegistered()`事件。
+5. 在`AbstractBootstrap.doBind0()`中调用了`channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);`方法，完成了bind具体的服务器端口，最终调用了`NioServerSocketChannel.doBind(SocketAddress localAddress)`完成bind。接着触发`pipeline.fireChannelActive()`事件。
+
+ 
+ 
+# 客户端发送数据
 
 ---
 
@@ -179,11 +225,31 @@ ChannelSink sunk source这种geek的命名，受不了。 新版本果然悄悄�
 另外，可以观察到，在子接口里仅仅把父接口方法返回值覆写了，然后什么都不做。这样一定程度上避免了强制转型的尴尬。
 谁负责整体框架，领导喊口号，定规则
 谁负责具体执行，码农苦执行，
+SystemPropertyUtil
+String.format("nThreads: %d (expected: > 0)", nThreads)
+DefaultThreadFactory
+isAssignableFrom？？？
+io.netty.util.NetUtil
+所有耗时较大的步骤全部异步了。
+DefaultChannelHandlerContext 设计精髓，支持多个事件？？
+
+主要值得一提的就是channel方法的设计。传递class，然后通过反射来实例化具体的Channel实例,一定程度上避免了写死类名字符串导致未来版本变动时发生错误的可能性。
+IdentityHashMap，            // Not using ConcurrentHashMap due to high memory consumption. 消耗内存过大
+归纳，演绎 一般和特殊，整体和局部 不完全归纳
+往nio的本质上靠，新增了哪些东西。有点像看ORM源码。如何对JDBC封装。
+
+## 个人觉得不太好的
+
+b.bind(port)这个里面的内容非常复杂，不仅仅是bind一个port那么简单。所以该方法命名不是很好。
+
+父接口依赖子接口，也不是很好。
+
+无一类外的是，继承体系相对复杂。父类，子类的命名通常不能体现出谁是父类，谁是子类，除了一个Abstract能够直接看出来。
 
 ---
 
 ## 注意事项
-客户端单实例，防止消耗线程
+客户端单实例，防止消耗过多线程。这个在[http://hellojava.info/](http://hellojava.info/)中多次提到。
 
 ---
 
