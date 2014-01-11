@@ -6,34 +6,30 @@ category: 开源项目
 tags: [netty]
 ---
 
-## UserGuide重点介绍
+## 用户手册重点介绍
 通用的协议或者实现有时不能满足各种各样的需求。就好像，我们通常不会使用一个HTTP Server来同时进行传输大文件，email以及近实时的消息如金融信息和多玩家游戏数据。我们需要一个高度优化的协议实现，来满足一些特定的需求。
 
 Netty是一个**异步，事件驱动**的网络应用框架，并且提供了一些工具来帮助迅速地开发**高性能，高扩展性**的服务端和客户端。
 
-`ChannelHandlerAdapter` 实现了`ChannelHandler`接口 ，`ChannelInitializer`继承了`ChannelHandlerAdapter`
-`ChannelHandlerAdapter`大部分职责委托给ChannelHandlerContext
-ByteBuf 是一个引用计数对象，必须显式地调用release()方法来减少引用计数。a life without flipping out
- 
-   
-  boss线程池用来接受客户端的连接请求，worker线程池用来处理boss线程池里面的连接的数据。
-   
- `ChannelInitializer`是一个特殊的handler，用来初始化ChannelPipeline里面的handler链。 这个特殊的`ChannelInitializer` handler 在加入到pipeline后，在initChannel调用结束后会被remove掉，从而完成初始化的效果。
+下面的介绍不成系统，有点离散，请各位看官先有个初步概念，如果有问题，可以先翻下UserGuide。
 
-option()用来设置ServerSocket的参数，childOption()用来设置Socket的参数。
- 
-`ChannelHandlerContext`主要用来触发I/O事件以及操作？ TODO
+`ChannelHandlerAdapter` 实现了`ChannelHandler`接口 ，`ChannelInitializer`继承了`ChannelHandlerAdapter`。`ChannelHandlerAdapter`大部分职责委托给`ChannelHandlerContext`实现类
 
+`ByteBuf`是一个引用计数对象，必须显式地调用`release()`方法来减少引用计数。  
+   
+Boss线程池用来接受客户端的连接请求，Worker线程池用来处理boss线程池里面的连接的数据。
+   
+`ChannelInitializer`是一个特殊的handler，用来初始化ChannelPipeline里面的handler链。 这个特殊的`ChannelInitializer`在加入到pipeline后，在initChannel调用结束后会被remove掉，从而完成初始化的效果（后文会详述）。
+
+`AbstractBootstrap.option()`用来设置ServerSocket的参数，`AbstractBootstrap.childOption()`用来设置Socket的参数。
+ 
 在调用ctx.write(Object)后需要调用ctx.flush()方法，这样才能将数据发出去。或者直接调用 ctx.writeAndFlush(msg)方法。
-
-channelActive() 
-channelRead()   
-
+ 
 `final ByteBuf time = ctx.alloc().buffer(4); ` 
 
 `ChannelFuture`表示实际的I/O操作还未发生。因为在netty中，所有的I/O操作（如read, write, connect,和bind）都是异步的。 
  
-在处理基于流的传输协议TCP/IP的数据时，接收的数据是存储在socket接受缓冲里面的。不幸的是，假如你发送了2个报文，底层是发送了两组字节。这意味着，操作系统仅仅把这两个报文当成一组字节来处理，它并未区分那一部分字节是第一个报文，哪一部分是第二个字节。这些数据需要业务程序自己处理，比如当接收的数据满足4个字节时，业务程序才进行处理，否则就一直等待。。
+在处理基于流的传输协议TCP/IP的数据时，接收的数据是存储在socket接受缓冲里面的。不幸的是，假如你发送了2个报文，底层是发送了两组字节，这意味着，操作系统仅仅把这两个报文当成一组字节来处理，它并未区分那一部分字节是第一个报文，哪一部分是第二个字节。这些数据需要业务程序自己处理，比如当接收的数据满足4个字节时，业务程序才进行处理，否则就一直等待。
 
 ---
   
@@ -146,6 +142,15 @@ Bootstrap这个词在计算机中，通常表示某个框架开始执行的第�
 --- 
  
 ## 服务端启动服务
+### 背景介绍
+先初步有个印象，后面讲到时会再次提及。先讲整体，看看悟性，不懂的话后面会再讲到细节代码时会再谈到。
+
+1. `Channel`<--`AbstractChannel`<--`AbstractNioChannel`<--`AbstractNioMessageChannel`<--`AbstractNioMessageServerChannel`<--`NioServerSocketChannel	`，类继承关系如上，相对比较清晰。
+2. `Unsafe`<--`NioUnsafe`<--`AbstractNioUnsafe`<--`NioMessageUnsafe`。在实现上，`AbstractUnsafe`是`AbstractChannel`的内部类。
+
+
+可能还需要挪到上面一个章节。TODO
+
 ### NioEventLoopGroup初始化
 1. `NioEventLoopGroup`初始化父类`MultithreadEventLoopGroup`,触发父类获得默认的线程数，其值默认是`Runtime.getRuntime().availableProcessors() * 2`
 2. 然后接着调用`MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args)`构造方法。依次触发如下步骤：
@@ -170,32 +175,454 @@ Bootstrap这个词在计算机中，通常表示某个框架开始执行的第�
 ---
 
 ### ServerBootstrap 初始化
+
 	ServerBootstrap b = new ServerBootstrap();
     b.group(bossGroup, workerGroup)
     .channel(NioServerSocketChannel.class)
     .childHandler(new TelnetServerInitializer());	
-SHANGM这段代码内涵平平，主要设置group属性是bossGroup，childGroup属性是workerGroup。
-没啥其他复杂属性赋值。主要值得一提的就是channel方法的设计。传递class，然后通过反射来实例化具体的Channel实例。
+上面这段代码内涵平平，主要设置group属性是bossGroup，childGroup属性是workerGroup。
+没啥其他复杂属性赋值。主要值得一提的就是channel方法的设计，通过传递class对象，然后通过反射来实例化具体的Channel实例。
 
 `b.bind(port).sync().channel().closeFuture().sync();`
 
-bind 内部调用`ChannelFuture doBind(final SocketAddress localAddress) `方法，依次完成如下步骤：
+b.bind(port)方法会调用下面的doBind方法，在doBind方法中会完成Channel的初始化，包括实例化和参数设置
 
-1. 开始`NioServerSocketChannel`对象创建
-	1. `Channel`<--`AbstractChannel`<--`AbstractNioChannel`<--`AbstractNioMessageChannel`<--`AbstractNioMessageServerChannel`<--`NioServerSocketChannel	`，类继承关系如上，相对比较清晰。
-	2. `Unsafe`<--`NioUnsafe`<--`AbstractNioUnsafe`<--`NioMessageUnsafe`
-	3. 在`NioServerSocketChannel.newSocket()`调用了`ServerSocketChannel.open()`，完成了javaChannel的创建
-	4. 在`AbstractChannel(Channel parent, EventLoop eventLoop)`中，进行了两个重要操作：` unsafe = newUnsafe();pipeline = new DefaultChannelPipeline(this);`
-	5. 在`AbstractNioChannel`的构造方法中完成了`ch.configureBlocking(false)`了调用
-	6. 在`DefaultServerSocketChannelConfig`中构造方法中完成了channel的参数设置
-2. 至此，完成`NioServerSocketChannel`对象创建。可以看到，创建了javaChannel，设置了是否blocking，初始化了连接参数。
-3. 调用`AbstractBootstrap.init(Channel channel)`方法完成初始化，里面主要涉及到Parent Channel 和 Child Channel的option和attribute 设置，代码类似于` channel.config().setOptions(options);`和`channel.attr(key).set(e.getValue())`，将客户端设置的参数覆盖到默认参数中；最后，还将`childHandler(new TelnetServerInitializer())`中设置的handler加入到pipeline()中
-4. 在`channel.unsafe().register(regFuture);`中把channel 注册到 selector上，主要异步调用`selectionKey = javaChannel().register(eventLoop().selector, 0, this);`；然后接着触发`  pipeline.fireChannelRegistered()`事件。
+    private ChannelFuture doBind(final SocketAddress localAddress) {
+        final ChannelFuture regFuture = initAndRegister();//重点介绍1
+        final Channel channel = regFuture.channel();
+        if (regFuture.cause() != null) {
+            return regFuture;
+        }
+
+        final ChannelPromise promise;
+        if (regFuture.isDone()) {
+            promise = channel.newPromise();
+            doBind0(regFuture, channel, localAddress, promise);//重点介绍2
+        } else {
+            // Registration future is almost always fulfilled already, but just in case it's not.
+            promise = new DefaultChannelPromise(channel, GlobalEventExecutor.INSTANCE);
+            regFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    doBind0(regFuture, channel, localAddress, promise);
+                }
+            });
+        }
+
+        return promise;
+    }
+ 
+ 上文的 initAndRegister和doBind0需要细说。
+   
+    final ChannelFuture initAndRegister() {
+        Channel channel;
+        try {
+            channel = createChannel();//重点介绍1.1
+        } catch (Throwable t) {
+            return VoidChannel.INSTANCE.newFailedFuture(t);
+        }
+
+        try {
+            init(channel);//重点介绍1.2
+        } catch (Throwable t) {
+            channel.unsafe().closeForcibly();
+            return channel.newFailedFuture(t);
+        }
+
+        ChannelPromise regFuture = channel.newPromise();
+        channel.unsafe().register(regFuture);//重点介绍1.3
+        if (regFuture.cause() != null) {
+            if (channel.isRegistered()) {
+                channel.close();
+            } else {
+                channel.unsafe().closeForcibly();
+            }
+        }
+   
+   重点介绍1.1,调用ServerBootstrap.createChannel() ，通过反射完成Channel初始化
+   
+    @Override
+    Channel createChannel() {
+        EventLoop eventLoop = group().next();
+        return channelFactory().newChannel(eventLoop, childGroup);//重点介绍1.1.1
+
+    }
+    
+重点介绍1.1.1，此时将断点打到NioServerSocketChannel的构造方法上     
+
+	 public NioServerSocketChannel(EventLoop eventLoop, EventLoopGroup childGroup) {
+        super(null, eventLoop, childGroup, newSocket(), SelectionKey.OP_ACCEPT);//重点介绍1.1.1.1
+        config = new DefaultServerSocketChannelConfig(this, javaChannel().socket());//重点介绍1.1.1.2
+
+    }
+
+ 重点介绍1.1.1.1,这段代码主要完成3件事。
+ 
+ 第一个是在`NioServerSocketChannel.newSocket()`调用了`ServerSocketChannel.open()`，完成了javaChannel的创建
+   
+        private static ServerSocketChannel newSocket() {
+        try {
+            return ServerSocketChannel.open();
+        } catch (IOException e) {
+            throw new ChannelException(
+                    "Failed to open a server socket.", e);
+        }
+    }
+
+第二个是在`AbstractNioChannel`的构造方法中调用了`ch.configureBlocking(false)`方法
+ 
+	 protected AbstractNioChannel(Channel parent, EventLoop eventLoop, SelectableChannel ch, int readInterestOp) {
+        super(parent, eventLoop);//重点介绍1.1.1.1.1
+        this.ch = ch;
+        this.readInterestOp = readInterestOp;
+        try {
+            ch.configureBlocking(false);
+        } catch (IOException e) {
+            try {
+                ch.close();
+            } catch (IOException e2) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn(
+                            "Failed to close a partially initialized socket.", e2);
+                }
+            }
+
+            throw new ChannelException("Failed to enter non-blocking mode.", e);
+        }
+    }   
+ 
+ 重点介绍1.1.1.1.1中，在`AbstractChannel(Channel parent, EventLoop eventLoop)`中，进行了两个重要操作：` unsafe = newUnsafe();pipeline = new DefaultChannelPipeline(this);`。
+ 
+ 	protected AbstractChannel(Channel parent, EventLoop eventLoop) {
+        this.parent = parent;
+        this.eventLoop = validate(eventLoop);
+        unsafe = newUnsafe();
+        pipeline = new DefaultChannelPipeline(this);//重点介绍1.1.1.1.1.1
+    }
+
+重点介绍1.1.1.1.1.1,设置了HeadHandler和TailHandler。这两个类也比较重要。
+    
+   public DefaultChannelPipeline(AbstractChannel channel) {
+        if (channel == null) {
+            throw new NullPointerException("channel");
+        }
+        this.channel = channel;
+
+        TailHandler tailHandler = new TailHandler();
+        tail = new DefaultChannelHandlerContext(this, null, generateName(tailHandler), tailHandler);//重点介绍1.1.1.1.1.1.1
+
+        HeadHandler headHandler = new HeadHandler(channel.unsafe());
+        head = new DefaultChannelHandlerContext(this, null, generateName(headHandler), headHandler);
+
+        head.next = tail;
+        tail.prev = head;
+    }  
+ 
+ 重点介绍1.1.1.1.1.1.1,这个方法完成了DefaultChannelHandlerContext的对象的初始化。这个类也是核心类，会在后面重点分析。
+   
+   
+ 此时，我们方法调用栈结束，然后回到 重点介绍1.1.1.2 这段代码上来。 在`DefaultServerSocketChannelConfig`中构造方法中完成了channel的参数设置
+ 
+ 至此，才完成重点介绍1.1 AbstractBootstrap.createChannel()方法的执行。现在又开始 重点介绍1.2的代码片段。该  AbstractBootstrap.init(Channel channel)  方法里面主要涉及到Parent Channel 和 Child Channel的option和attribute 设置，并将客户端设置的参数覆盖到默认参数中；最后，还将`childHandler(new TelnetServerInitializer())`中设置的handler加入到pipeline()中。代码见下。
+ 
+void init(Channel channel) throws Exception {
+        final Map<ChannelOption<?>, Object> options = options();
+        synchronized (options) {
+            channel.config().setOptions(options);
+        }
+
+        final Map<AttributeKey<?>, Object> attrs = attrs();
+        synchronized (attrs) {
+            for (Entry<AttributeKey<?>, Object> e: attrs.entrySet()) {
+                @SuppressWarnings("unchecked")
+                AttributeKey<Object> key = (AttributeKey<Object>) e.getKey();
+                channel.attr(key).set(e.getValue());
+            }
+        }
+
+        ChannelPipeline p = channel.pipeline();
+        if (handler() != null) {
+            p.addLast(handler());
+        }
+
+        final ChannelHandler currentChildHandler = childHandler;
+        final Entry<ChannelOption<?>, Object>[] currentChildOptions;
+        final Entry<AttributeKey<?>, Object>[] currentChildAttrs;
+        synchronized (childOptions) {
+            currentChildOptions = childOptions.entrySet().toArray(newOptionArray(childOptions.size()));
+        }
+        synchronized (childAttrs) {
+            currentChildAttrs = childAttrs.entrySet().toArray(newAttrArray(childAttrs.size()));
+        }
+
+        p.addLast(new ChannelInitializer<Channel>() {
+            @Override
+            public void initChannel(Channel ch) throws Exception {
+                ch.pipeline().addLast(new ServerBootstrapAcceptor(currentChildHandler, currentChildOptions,
+                        currentChildAttrs));
+            }
+        });
+    }
+
+
+至此完成重点介绍1.2执行，开始执行重点介绍1.3 `channel.unsafe().register(regFuture);`这段代码。该方法内部接着执行执行重点介绍1.3.1的代码。
+
+	public final void register(final ChannelPromise promise) {
+            if (eventLoop.inEventLoop()) {
+                register0(promise);
+            } else {
+                try {
+                    eventLoop.execute(new Runnable() {
+                        @Override
+                        public void run() {//重点介绍1.3.1
+                            register0(promise);
+                        }
+                    });
+                } catch (Throwable t) {
+                    logger.warn(
+                            "Force-closing a channel whose registration task was not accepted by an event loop: {}",
+                            AbstractChannel.this, t);
+                    closeForcibly();
+                    closeFuture.setClosed();
+                    promise.setFailure(t);
+                }
+            }
+        }
+
+重点介绍1.3.1,该片段主要执行`doRegister();//重点介绍1.3.1.1`和` pipeline.fireChannelRegistered();//重点介绍1.3.1.2`
+
+
+ 	private void register0(ChannelPromise promise) {
+            try {
+                // check if the channel is still open as it could be closed in the mean time when the register
+                // call was outside of the eventLoop
+                if (!ensureOpen(promise)) {
+                    return;
+                }
+                doRegister();//重点介绍1.3.1.1
+                registered = true;
+                promise.setSuccess();
+                pipeline.fireChannelRegistered();//重点介绍1.3.1.2
+                if (isActive()) {
+                    pipeline.fireChannelActive();
+                }
+            } catch (Throwable t) {
+                // Close the channel directly to avoid FD leak.
+                closeForcibly();
+                closeFuture.setClosed();
+                if (!promise.tryFailure(t)) {
+                    logger.warn(
+                            "Tried to fail the registration promise, but it is complete already. " +
+                                    "Swallowing the cause of the registration failure:", t);
+                }
+            }
+        }
+
+重点介绍1.3.1.1 将代码片段将javachannel注册到selector上，并把selectionKey属性赋值
+
+ 	protected void AbstractNioChannel.doRegister() throws Exception {
+        boolean selected = false;
+        for (;;) {
+            try {
+                selectionKey = javaChannel().register(eventLoop().selector, 0, this);
+                return;
+            } catch (CancelledKeyException e) {
+                if (!selected) {
+                    // Force the Selector to select now as the "canceled" SelectionKey may still be
+                    // cached and not removed because no Select.select(..) operation was called yet.
+                    eventLoop().selectNow();
+                    selected = true;
+                } else {
+                    // We forced a select operation on the selector before but the SelectionKey is still cached
+                    // for whatever reason. JDK bug ?
+                    throw e;
+                }
+            }
+        }
+    }
+
+重点介绍1.3.1.2，这个方法里面有一堆事情要讲。先暂且放下，后文再说。 
+ 
+ public ChannelPipeline DefaultChannelPipeline.fireChannelRegistered() {
+        head.fireChannelRegistered();
+        return this;
+    }
+    
+ 此时终于完成 重点介绍1 代码片段执行，开始执行 重点介绍2 的代码片段。  
+ 
+ private static void doBind0(
+            final ChannelFuture regFuture, final Channel channel,
+            final SocketAddress localAddress, final ChannelPromise promise) {
+
+        // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
+        // the pipeline in its channelRegistered() implementation.
+        channel.eventLoop().execute(new Runnable() {
+            @Override
+            public void run() {
+                if (regFuture.isSuccess()) {
+                    channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);重点介绍2.1
+                } else {
+                    promise.setFailure(regFuture.cause());
+                }
+            }
+        });
+    }
+    
+  重点介绍2.1，该方法内部有调用了pipeline的方法了。 好吧，是时候介绍pipeline了。 
+  
+   public ChannelFuture bind(SocketAddress localAddress, ChannelPromise promise) 	{
+        return pipeline.bind(localAddress, promise);
+    } 
+
+#### Pipeline
+
+	
+	这个pipeline内部维护一个链表，依次是head,$1,tail。另外，内部还有name2ctx这个map属性，也就是说，这个类既提供了O(N)，也提供O(1)操作。
+	
+	
+	
+当我们跳出里面的细节时，考虑一下，你是作者的话，会如何考虑。整体的一个算法 。
+ nio，sun jdk bug, option(默认和用户设置)，异步future、executor，pipeline、context、handler，nio，设计模式（模板），不同的通信，tcp，udp，
+ 
+ 
+ 
+ 
+  
+ 
 5. 在`AbstractBootstrap.doBind0()`中调用了`channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);`方法，完成了bind具体的服务器端口，最终调用了`NioServerSocketChannel.doBind(SocketAddress localAddress)`完成bind。接着触发`pipeline.fireChannelActive()`事件。
 
+invokeChannelRegisteredNow 静态导入
+
+ 此时完成XX方法执行，现在回到XXX方法
+	
  
  
-# 客户端发送数据
+
+    public ChannelHandlerContext fireChannelRegistered() {
+        DefaultChannelHandlerContext next = findContextInbound(MASK_CHANNEL_REGISTERED);
+        next.invoker.invokeChannelRegistered(next);
+        return this;
+    }
+    
+    public void invokeChannelRegistered(final ChannelHandlerContext ctx) {
+        if (executor.inEventLoop()) {
+            invokeChannelRegisteredNow(ctx);
+        } else {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    invokeChannelRegisteredNow(ctx);
+                }
+            });
+        }
+    }     
+    
+  void io.netty.channel.ChannelInitializer.channelRegistered(ChannelHandlerContext ctx) throws Exception
+  
+  
+  public final void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+        ChannelPipeline pipeline = ctx.pipeline();
+        boolean success = false;
+        try {
+            initChannel((C) ctx.channel());
+            pipeline.remove(this);
+            ctx.fireChannelRegistered();
+            success = true;
+        } catch (Throwable t) {
+            logger.warn("Failed to initialize a channel. Closing: " + ctx.channel(), t);
+        } finally {
+            if (pipeline.context(this) != null) {
+                pipeline.remove(this);
+            }
+            if (!success) {
+                ctx.close();
+            }
+        }
+    }  
+    
+    
+  然后调用initChannel方法，从而把ServerBootstrapAcceptor也加入到pipeline中了。
+  
+  	public void initChannel(Channel ch) throws Exception {
+                ch.pipeline().addLast(new 			ServerBootstrapAcceptor(currentChildHandler, currentChildOptions,
+                        currentChildAttrs));
+            }
+ 
+ 这里的ServerBootstrapAcceptor同样继承于 ChannelHandlerAdapter，里面的属性childHandler就是 io.netty.example.telnet.TelnetServerInitializer@221abac1
+ 此时链是 headHandler，ServerBootstrap$1，io.netty.bootstrap.ServerBootstrap$ServerBootstrapAcceptor@46f3978d，tailhandler
+ 
+ 执行完pipeline.remove(this);删除了ServerBootstrap$1 handler，然后只剩下
+ headHandler，io.netty.bootstrap.ServerBootstrap$ServerBootstrapAcceptor@46f3978d，tailhandler；
+ 
+  pipeline.fireChannelRegistered(); 比较重要
+ 
+ 上文已表，pipeline内部主要在维护DefaultChannelHandlerContext链表，而每个DefaultChannelHandlerContext与ChannelHandler实例相对应。	
+                    
+ 
+ ctx.fireChannelRegistered(); 然后跳过ServerBootstrapAcceptor这个handler，找到tailHandler，
+
+
+ChannelHandlerAdapter实现的ChannelHandler接口的方法都是被@Skip忽视了，所以说，只会执行被Handler子类明确覆盖的方法
+
+这个Pattern设计比较巧妙，首先应该明确执行各个Handler链中的方法；然后如果方法被@Skip注解了，那么该方法则不会执行。
+
+把前一个future作为下一个调用方法的参数，这样可以先判断后再处理，从而提升性能。
+
+
+	private ChannelFuture doBind(final SocketAddress localAddress) {
+        final ChannelFuture regFuture = initAndRegister();
+        final Channel channel = regFuture.channel();
+        if (regFuture.cause() != null) {
+            return regFuture;
+        }
+
+        final ChannelPromise promise;
+        if (regFuture.isDone()) {
+            promise = channel.newPromise();
+            doBind0(regFuture, channel, localAddress, promise);
+        } else {
+            // Registration future is almost always fulfilled already, but just in case it's not.
+            promise = new DefaultChannelPromise(channel, GlobalEventExecutor.INSTANCE);
+            regFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    doBind0(regFuture, channel, localAddress, promise);
+                }
+            });
+        }
+
+        return promise;
+    }
+ 
+ 
+ doBind0 -->  channel.eventLoop().execute --> channel.bind--> pipeline.bind-->DefaultChannelHandlerContext.bind -->DefaultChannelHandlerInvoker.invokeBind--》unsafe.bind(localAddress, promise);-->AbstractChannel/NioServerSocketChannel.doBind(SocketAddress localAddress) throws Exception
+
+ 
+ 魔法在这里？但是为什么要顺序反过来呢？ 一个是ctx = ctx.next;另一个是  ctx = ctx.prev;
+
+ 
+ 
+  	private DefaultChannelHandlerContext findContextInbound(int mask) {
+        DefaultChannelHandlerContext ctx = this;
+        do {
+            ctx = ctx.next;
+        } while ((ctx.skipFlags & mask) != 0);
+        return ctx;
+    }
+
+    private DefaultChannelHandlerContext findContextOutbound(int mask) {
+        DefaultChannelHandlerContext ctx = this;
+        do {
+            ctx = ctx.prev;
+        } while ((ctx.skipFlags & mask) != 0);
+        return ctx;
+    }
+    
+    开始`NioServerSocketChannel`对象创建
+至此，完成`NioServerSocketChannel`对象创建。可以看到，创建了javaChannel，设置了是否blocking，初始化了连接参数。
+
+ 
+## 客户端发送数据
 
 ---
 
@@ -232,19 +659,32 @@ isAssignableFrom？？？
 io.netty.util.NetUtil
 所有耗时较大的步骤全部异步了。
 DefaultChannelHandlerContext 设计精髓，支持多个事件？？
+把前一个future作为下一个调用方法的参数，这样可以先判断后再处理，从而提升性能。
 
 主要值得一提的就是channel方法的设计。传递class，然后通过反射来实例化具体的Channel实例,一定程度上避免了写死类名字符串导致未来版本变动时发生错误的可能性。
 IdentityHashMap，            // Not using ConcurrentHashMap due to high memory consumption. 消耗内存过大
 归纳，演绎 一般和特殊，整体和局部 不完全归纳
 往nio的本质上靠，新增了哪些东西。有点像看ORM源码。如何对JDBC封装。
-
+pipeline里面并不直接是handler，需要修改。
 ## 个人觉得不太好的
 
 b.bind(port)这个里面的内容非常复杂，不仅仅是bind一个port那么简单。所以该方法命名不是很好。
 
 父接口依赖子接口，也不是很好。
-
+DefaultChannelPipeline.addLast 这个方法太坑了，并不是把handler加到最后一个上面。
 无一类外的是，继承体系相对复杂。父类，子类的命名通常不能体现出谁是父类，谁是子类，除了一个Abstract能够直接看出来。
+## 中立 
+
+addLast0 私有
+getter、setter省略？
+
+## 疑问
+为什么boss也要是个线程池？作用是啥？高并发下，线程处理不过来，会如何处理？
+
+NioEventLoop.run()是一个死循环？
+
+
+
 
 ---
 
