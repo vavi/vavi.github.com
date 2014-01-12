@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "java thread programing part5 这些年的那些坑"
+title: "JAVA学习笔记 part5.这些年的那些坑"
 description: ""
 category: 
 tags: [JAVA学习笔记]
