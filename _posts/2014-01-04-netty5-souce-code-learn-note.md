@@ -144,25 +144,163 @@ Bootstrap这个词在计算机中，通常表示某个框架开始执行的第�
 ## 服务端启动服务
 
 ### NioEventLoopGroup初始化
-1. `NioEventLoopGroup`初始化父类`MultithreadEventLoopGroup`,触发父类获得默认的线程数，其值默认是`Runtime.getRuntime().availableProcessors() * 2`
-2. 然后接着调用`MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args)`构造方法。依次触发如下步骤：
-	1. 初始化`private final Promise<?> terminationFuture = new DefaultPromise(GlobalEventExecutor.INSTANCE);`属性；里面水较深，后续分析TODO。
-	2. 设置默认DefaultThreadFactory线程工厂，主要做了2件事，设置线程池名称和线程名称
-	3. 初始化children数组，然后通过调用`NioEventLoopGroup.newChild`方法完成child属性设置。这个方法比较重要，先要介绍下：
-		1. 对象继承关系如下，`JUC.AbstractExecutorService`<--`AbstractEventExecutor`<--`SingleThreadEventExecutor`<--`SingleThreadEventLoop`<--`NioEventLoop`
-		2. 然后在类加载时，主要涉及到对象的初始化。其中一个是在`NioEventLoop`的静态块中解决了JDK 的一个bug
-		3. 设置`NioEventLoop.parent`为`NioEventLoopGroup`
-		4. 调用`NioEventLoop.openSelector()`，完成selector初始化
-			1. 初始化`SelectedSelectionKeySet`，设置其属性` keysA = new SelectionKey[1024]; keysB = keysA.clone();`
-			2. 进行了一个优化，设置了`sun.nio.ch.SelectorImpl`的`selectedKeys`和`publicSelectedKeys`属性。用意何在？TODO
-   4. 循环完成children数组的初始化
-3. `NioEventLoopGroup`初始化完毕。   
+`NioEventLoopGroup`初始化父类`MultithreadEventLoopGroup`,触发父类获得默认的线程数，其值默认是`Runtime.getRuntime().availableProcessors() * 2`
+
+	static {
+        DEFAULT_EVENT_LOOP_THREADS = Math.max(1, SystemPropertyUtil.getInt(
+                "io.netty.eventLoopThreads", Runtime.getRuntime().availableProcessors() * 2));
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("-Dio.netty.eventLoopThreads: {}", DEFAULT_EVENT_LOOP_THREADS);
+        }
+    }
+
+
+接着调用`NioEventLoopGroup`的构造器，
+  
+   	public NioEventLoopGroup() {
+        this(0);
+    }
+    
+   	public NioEventLoopGroup(int nThreads, Executor executor) {
+        this(nThreads, executor, SelectorProvider.provider());
+    }
+    
+   	public NioEventLoopGroup(int nThreads) {
+        this(nThreads, (Executor) null);
+    }
+
+   	public NioEventLoopGroup(int nThreads, ThreadFactory threadFactory) {
+        this(nThreads, threadFactory, SelectorProvider.provider());
+    }
+    
+    public NioEventLoopGroup(
+            int nThreads, ThreadFactory threadFactory, final SelectorProvider selectorProvider) {
+        super(nThreads, threadFactory, selectorProvider);
+    }
+    
+   调用父类MultithreadEventLoopGroup的构造器，该构造器又调用了父类构造器。
+    
+     	protected MultithreadEventLoopGroup(int nThreads, Executor executor, Object... args) {
+        super(nThreads == 0 ? DEFAULT_EVENT_LOOP_THREADS : nThreads, executor, args);
+    }
+
+ 下面的构造方法主要完成以下几件事情：
+
+ 1. 设置默认DefaultThreadFactory线程工厂，主要做了2件事，设置线程池名称和线程名称
+ 2. 初始化children数组，然后通过调用`NioEventLoopGroup.newChild`方法完成child属性设置。 
+
+ 
+     	protected MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args) {
+        if (nThreads <= 0) {
+            throw new IllegalArgumentException(String.format("nThreads: %d (expected: > 0)", nThreads));
+        }
+
+        if (executor == null) {
+            executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
+        }
+
+        children = new EventExecutor[nThreads];
+        for (int i = 0; i < nThreads; i ++) {
+            boolean success = false;
+            try {
+                children[i] = newChild(executor, args);//重点介绍
+                success = true;
+            } catch (Exception e) {
+                // TODO: Think about if this is a good exception type
+                throw new IllegalStateException("failed to create a child event loop", e);
+            } finally {
+                if (!success) {
+                    for (int j = 0; j < i; j ++) {
+                        children[j].shutdownGracefully();
+                    }
+
+                    for (int j = 0; j < i; j ++) {
+                        EventExecutor e = children[j];
+                        try {
+                            while (!e.isTerminated()) {
+                                e.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
+                            }
+                        } catch (InterruptedException interrupted) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+    在newChild方法中，主要完成构建NioEventLoop实例
+    
+ 	 	@Override
+    	protected EventLoop newChild(Executor executor, Object... args) throws 	Exception {
+        return new NioEventLoop(this, executor, (SelectorProvider) args[0]);
+   	 	}
+    
+    下面的`super(parent, executor, false);`主要是设置NioEventLoopGroup是NioEventLoop的parent。然后调用`openSelector()`创建Selector对象。
+    
+    	NioEventLoop(NioEventLoopGroup parent, Executor executor, SelectorProvider selectorProvider) {
+        super(parent, executor, false);
+        if (selectorProvider == null) {
+            throw new NullPointerException("selectorProvider");
+        }
+        provider = selectorProvider;
+        selector = openSelector();
+    	}
+    	
+
+首先，先初始化Selector对象，然后再初始化`SelectedSelectionKeySet`，设置其属性` keysA = new SelectionKey[1024]; keysB = keysA.clone();`。进行了一个优化，设置了`sun.nio.ch.SelectorImpl`的`selectedKeys`和`publicSelectedKeys`属性。用意何在？估计要看下提交记录才可以。TODO
+			 	     
+      private Selector NioEventLoop.openSelector() {
+        final Selector selector;
+        try {
+            selector = provider.openSelector();
+        } catch (IOException e) {
+            throw new ChannelException("failed to open a new selector", e);
+        }
+
+        if (DISABLE_KEYSET_OPTIMIZATION) {
+            return selector;
+        }
+
+        try {
+            SelectedSelectionKeySet selectedKeySet = new SelectedSelectionKeySet();
+
+            Class<?> selectorImplClass =
+                    Class.forName("sun.nio.ch.SelectorImpl", false, ClassLoader.getSystemClassLoader());
+
+            // Ensure the current selector implementation is what we can instrument.
+            if (!selectorImplClass.isAssignableFrom(selector.getClass())) {
+                return selector;
+            }
+
+            Field selectedKeysField = selectorImplClass.getDeclaredField("selectedKeys");
+            Field publicSelectedKeysField = selectorImplClass.getDeclaredField("publicSelectedKeys");
+
+            selectedKeysField.setAccessible(true);
+            publicSelectedKeysField.setAccessible(true);
+
+            selectedKeysField.set(selector, selectedKeySet);
+            publicSelectedKeysField.set(selector, selectedKeySet);
+
+            selectedKeys = selectedKeySet;
+            logger.trace("Instrumented an optimized java.util.Set into: {}", selector);
+        } catch (Throwable t) {
+            selectedKeys = null;
+            logger.trace("Failed to instrument an optimized java.util.Set into: {}", selector, t);
+        }
+
+        return selector;
+    }
+    
+
+最后循环完成children数组的初始化` children[i] = newChild(executor, args);`，进而完成`NioEventLoopGroup`对象初始化。   
 
 
 小结：此时结合Eclipse的DEBUG视图，观察bossGroup的属性，可以基本看到完成如下几个事情
 
 * 设置默认线程数和默认线程工厂
-* 设置`NioEventLoop`的selector属性
+* 通过循环，给每个`NioEventLoop`设置了selector属性，新建了多个Selector对象。
 
 ---
 
@@ -792,9 +930,19 @@ static final class TailHandler extends ChannelHandlerAdapter {
         }
         
     
-  在重点介绍2.1.1.1.3里，执行  `pipeline.fireChannelActive();`方法。和上述逻辑一样，最终执行到TailHandler这里。
+  在重点介绍2.1.1.1.3里，执行  `pipeline.fireChannelActive();`方法。  
+  	  public ChannelPipeline fireChannelActive() {
+        head.fireChannelActive();//重点介绍2.1.1.1.3.1
+
+        if (channel.config().isAutoRead()) {
+            channel.read();//重点介绍2.1.1.1.3.2
+        }
+
+        return this;
+    }
   
-  
+  在重点介绍2.1.1.1.3.1里，和上述逻辑一样，最终执行到TailHandler这里。
+
    static final class TailHandler extends ChannelHandlerAdapter {
 
         @Override
@@ -806,17 +954,8 @@ static final class TailHandler extends ChannelHandlerAdapter {
         //下省略方法
  } 
  
- 	  @Override
-    public ChannelPipeline fireChannelActive() {
-        head.fireChannelActive();
-
-        if (channel.config().isAutoRead()) {
-            channel.read();
-        }
-
-        return this;
-    }
-    
+在重点介绍2.1.1.1.3.2里，由于channel.config().isAutoRead()默认返回true；
+ 	     
      @Override
     public ChannelPipeline read() {
         tail.read();
@@ -830,7 +969,7 @@ static final class TailHandler extends ChannelHandlerAdapter {
  
  
  	 @Override
-        public void AbstractChannel.AbstractUnsafe.beginRead() {
+     public void AbstractChannel.AbstractUnsafe.beginRead() {
             if (!isActive()) {
                 return;
             }
@@ -867,9 +1006,33 @@ static final class TailHandler extends ChannelHandlerAdapter {
 支持整个DefaultPromise.bind方法执行完毕，下面开始执行。
  
  	 @Override
-    public Promise<V> sync() throws InterruptedException {
+    public Promise<V> DefaultPromise.sync() throws InterruptedException {
         await();
         rethrowIfFailed();
+        return this;
+    }
+    
+     @Override
+    public Promise<V> DefaultPromise.await() throws InterruptedException {
+        if (isDone()) {
+            return this;
+        }
+
+        if (Thread.interrupted()) {
+            throw new InterruptedException(toString());
+        }
+
+        synchronized (this) {
+            while (!isDone()) {
+                checkDeadLock();
+                incWaiters();
+                try {
+                    wait();
+                } finally {
+                    decWaiters();
+                }
+            }
+        }
         return this;
     }
  
@@ -943,8 +1106,14 @@ ChannelHandlerAdapter实现的ChannelHandler接口的方法都是被@Skip忽视�
     开始`NioServerSocketChannel`对象创建
 至此，完成`NioServerSocketChannel`对象创建。可以看到，创建了javaChannel，设置了是否blocking，初始化了连接参数。
 
- 
+总结下服务端模式 
+
+
+--- 
+
 ## 客户端发送数据
+
+客户端和服务端比较相似
 
 ---
 
@@ -983,6 +1152,9 @@ io.netty.util.NetUtil
 DefaultChannelHandlerContext 设计精髓，支持多个事件？？
 把前一个future作为下一个调用方法的参数，这样可以先判断后再处理，从而提升性能。
 
+   1. 对象继承关系如下，`JUC.AbstractExecutorService`<--`AbstractEventExecutor`<--`SingleThreadEventExecutor`<--`SingleThreadEventLoop`<--`NioEventLoop`
+		
+
 主要值得一提的就是channel方法的设计。传递class，然后通过反射来实例化具体的Channel实例,一定程度上避免了写死类名字符串导致未来版本变动时发生错误的可能性。
 IdentityHashMap，            // Not using ConcurrentHashMap due to high memory consumption. 消耗内存过大
 归纳，演绎 一般和特殊，整体和局部 不完全归纳
@@ -991,6 +1163,8 @@ pipeline里面并不直接是handler，需要修改。
 
 Env，Context，Session
 
+LoopGroup和ExcutorGroup相当于Loop和Excutor的容器，Group中包括了多个Loop和多个Excutor，所以单个Loop和Excutor也可以理解为一个Group，但其中只有一个Loop和Excutor。Loop用于事件循环，Excutor用于任务的提交调度执行。
+
  背景介绍
 
 1. `Channel`<--`AbstractChannel`<--`AbstractNioChannel`<--`AbstractNioMessageChannel`<--`AbstractNioMessageServerChannel`<--`NioServerSocketChannel	`，类继承关系如上，相对比较清晰。
@@ -998,10 +1172,12 @@ Env，Context，Session
 
 另外，内部还有name2ctx这个map属性，也就是说，这个类既提供了O(N)，也提供O(1)操作。
 	
-	
+框架帮趟坑，然后在类加载时，主要涉及到对象的初始化。其中一个是在`NioEventLoop`的静态块中解决了JDK 的一个bug ；buildSelector bug	
 	
 当我们跳出里面的细节时，考虑一下，你是作者的话，会如何考虑。整体的一个算法 。
  nio，sun jdk bug, option(默认和用户设置)，异步future、executor，pipeline、context、handler，nio，设计模式（模板），不同的通信，tcp，udp，
+ 
+ TailHandler处理inbound类型的数据；HeadHandler处理outbound类型的数据。?TailHandler的实现函数都是空的，这说明对于底层上来应用的数据，用户必须定义Handler来处理，不能使用默认的Handler进行处理。HeaderHandler的实现函数都是基于unsafe对象的函数实现的，所以对于OutBound类型的数据，即应用往底层的数据，可以使用默认的Handler进行处理。
 
 ## 个人觉得不太好的
 
