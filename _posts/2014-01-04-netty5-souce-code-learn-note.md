@@ -142,7 +142,24 @@ Bootstrap这个词在计算机中，通常表示某个框架开始执行的第�
 --- 
  
 ## 服务端启动服务
+以io.netty.example.telnet.TelnetServer为例
 
+	public void run() throws Exception {
+        EventLoopGroup bossGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        try {
+            ServerBootstrap b = new ServerBootstrap();
+            b.group(bossGroup, workerGroup)
+             .channel(NioServerSocketChannel.class)
+             .childHandler(new TelnetServerInitializer());
+
+            b.bind(port).sync().channel().closeFuture().sync();
+        } finally {
+            bossGroup.shutdownGracefully();
+            workerGroup.shutdownGracefully();
+        }
+    }
+    
 ### NioEventLoopGroup初始化
 `NioEventLoopGroup`初始化父类`MultithreadEventLoopGroup`,触发父类获得默认的线程数，其值默认是`Runtime.getRuntime().availableProcessors() * 2`
 
@@ -1111,11 +1128,7 @@ ChannelHandlerAdapter实现的ChannelHandler接口的方法都是被@Skip忽视�
 
 --- 
 
-## 客户端发送数据
 
-客户端和服务端比较相似
-
----
 
 ## 服务端处理数据
 
