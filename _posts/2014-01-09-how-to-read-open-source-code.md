@@ -2,7 +2,7 @@
 layout: post
 title: "如何阅读开源代码"
 description: ""
-category:开源项目 
+category: 开源项目
 tags: [SoftTech]
 ---
 
