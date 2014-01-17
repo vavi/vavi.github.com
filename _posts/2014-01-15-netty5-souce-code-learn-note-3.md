@@ -188,10 +188,10 @@ tags: [netty]
 
 在执行tag1.2.1代码段前，child的handler链是HeadHandler，TailHandler。请读者注意，不要和parent的Handler链混淆。在执行完tag1.2.1后，此时的handler链是HeadHandler，TelnetServerInitializer和TailHandler 
 
-然后开始执行 tag1.2.2 `child.unsafe().register(child.newPromise());`。有一个小细节就是，此时会开一个新线程，去执行这个register0操作。 
+然后开始执行 tag1.2.2 `child.unsafe().register(child.newPromise());`。有一个小细节就是，此时会开一个新worker线程，去执行这个register0操作。 
 
 	 @Override
-        public final void register(final ChannelPromise promise) {
+        public final void AbstractChannel.AbstractUnsafe.register(final ChannelPromise promise) {
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
@@ -215,7 +215,7 @@ tags: [netty]
 
 在tag1.2.2.1，开始执行 register0(promise);
 
- private void AbstractChannel.register0(ChannelPromise promise) {
+ 	private void AbstractChannel.register0(ChannelPromise promise) {
             try {
                 // check if the channel is still open as it could be closed in the mean time when the register
                 // call was outside of the eventLoop
@@ -740,6 +740,8 @@ AbstractNioByteChannel.NioByteUnsafe.read()
 然后代码返回到tag2.2.2处，继续执行下一个循环，从而最终完成两次消息打印。
     
 接着代码继续返回到tag2.3处，继续执行`pipeline.fireChannelReadComplete(); `，从而触发了ByteToMessageDecoder和TailHandler的channelReadComplete()方法执行。      
+
+行文到此，服务端和客户端交互分析完毕。后续再进行总结下阅读Netty代码过程的思考
 
 
 {% include JB/setup %}
