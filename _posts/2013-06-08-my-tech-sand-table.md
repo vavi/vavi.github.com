@@ -161,9 +161,8 @@ Mou
 EverNote
 PDF
 Eclipse
-QQ
 Chrome
-
+Mail
 基本命令,awk,grep,sed
 
 
