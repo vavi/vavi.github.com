@@ -40,12 +40,9 @@ Java虚拟机之所以知道一个类中含有多少属性,方法等内容,是�
 
 在jdk1.4.2之前的javac 编译器采用了jsr和ret指令实现了finally语句,但是在1.4.2之后就已经改为异常表实现了.
 
+---
 
-
-
-
-
-#参考
+##参考
 
 http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html
 

@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "分布式系统原理学习笔记"
+title: "三言两语分布式原理"
 description: ""
 category: 
 tags: []
