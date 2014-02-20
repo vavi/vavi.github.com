@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "大型互联网架构和分布式系统原理概述"
+title: "大型互联网架构概述"
 description: ""
 category: 分布式系统
 tags: [分布式系统]
@@ -129,11 +129,14 @@ Cache就是将数据放到距离计算最近的地方，用来加快处理速度
 ## 其他
 还有其他方面的知识，笔者暂且列下，待后续填坑。
 
-* 配置数据、元数据管理系统：zk diamond
+* 配置数据、元数据管理系统：[ZooKeeper和Diamond有什么不同](http://jm-blog.aliapp.com/?p=2561)
 * 推荐系统：
 * 搜索系统：bi，机器学习分析用户行为，结合搜索进行推荐排名。 Hadoop，spark，storm solar 分布式搜索，中文分词库 搜索 分为 排序，推荐，BI,大数据
 * 鹰眼系统：   日志规范化 
-* 系统运维： 自动运维 os （cpu，memory，disk（空间，读写次数）） 中间件 tomcat， jvm，network，  metaq，通过监控生产者，broker，消费者之间的队列情况，动态决定增加、减少消费者的 Agent —》 Explorer ，Analyze，Visual，Dashboard，Share， matrix  ，各种延迟，各种指标 开发，发布，监控，预警，运维
+* 系统运维： 自动运维 os （cpu，memory，disk（空间，读写次数）） 中间件 tomcat， jvm，network，  metaq，通过监控生产者，broker，消费者之间的队列情况，动态决定增加、减少消费者的 Agent —》 Explorer ，Analyze，Visual，Dashboard，Share， matrix  ，各种延迟，各种指标 开发，发布，监控，预警，运维 服务框架自省（运维监控） 依赖关系统计，前台系统访问路径，自动、手工降级，系统问题自动排查甚至问题自动修复，时长，队列情况。
+
+
+瘦客户端 还是胖客户端 瘦的避免频繁升级
 
 * 能源节省：能源消耗 （制冷，电能，水冷） 地震带。
 * 系统安全：
@@ -149,13 +152,12 @@ package  编译 obj 独立部署
           build dependency 支持开速发布，不用大的cycle，灰色发布 ，通过LB来控制，先不发送请求 。根据系统使用率动态启动，停止实例。
 大众的 和 douban的 CODE
 
+
 * 元计算：虚拟化 是贯穿全系统的 云厂商 硬件申购， 
      因为：固定资产开销，可能闲置， 购买，管理，安装费用 ，无法迅速购买
      活动消费，类似开车和租车的区别 
      能源，制冷，运维成本，量大硬件定制
      充分利用闲置资源 数据中心，自动化代码管理，测试，安全检查
-
- 
  
 csdn双11介绍 
  
