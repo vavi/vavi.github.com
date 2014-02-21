@@ -164,44 +164,49 @@ TLB（Translation Lookaside Buffer，翻译后备缓冲器）是MMU硬件内部�
 ---
  
 ## TCP编程
+### TCP状态迁移
 ![]({{ BASE_PATH }}/images/cs/tcp-state-transfer.png )
 先来看下这张图，3次握手和4次挥手。在图中，还可以看到每次系统调用后的状态变化。
 
-TIME_WAIT 允许最大跳数内的并且小于2MSL的数据包重传
+需要值得一提的是TIME_WAIT状态。在上图中我们看到执行主动关闭的那段经历了这个状态。该端点停留在这个状态的时间是MSL（Maximum segment lifetime，最长分节生命期）的2倍，有时候称之为2MSL。它允许在最大跳数内的并且小于2MSL时间内重传数据包。
 
-I/O多路复用（I/O multiplexing）首先构造一张有关描述符的列表，然后调用一个函数，直到这些描述符中的一个已经准备I/O时，该函数才返回。在返回时，它告诉进程哪些描述符已经准备好可以进行I/O
+### TCP SOCKET API
+在熟悉了TCP的3次握手和4次挥手，我们再来看看基本的socket API。
+![]({{ BASE_PATH }}/images/cs/tcp-socket-api.png )
 
-poll、pselect和select这3个函数使我们能够执行I/O多路复用。
+listen 函数完成两件事：
 
-p581 
+1. 把一个未连接的套接字转换成一个被动套接字，指示内核应接受指向该套接字的连接请求。调用listen导致套接字从CLOSED状态转换成LISTEN状态
+2. 该函数的backlog参数规定了内核应该为相应套接字排队的最大连接个数。内核维护两个队列，分别是
+	* 未完成连接队列：处于SYN_RCVD状态等待完成三次握手过程的套接字
+	* 已完成连接队列：处于ESTABLISHED状态的并且完成三次握手过程的套接字
 
-电话类比网络连接关系原来在UP中已经阐述。
+另外，还需要说明的是，backlog定义有歧义，取决于系统的具体实现。也就是说，backlog的值可能是未完成连接队列大小与已完成连接队列之和；也有可能是其他值。
+
+这里稍微说下SYN flood 攻击。是指攻击者把源IP改成一个随机数，向受害主机只发送SYN；这样受害主机据不知道把ACK/SYN发往哪里，导致合法的客户服务被拒绝。 
+
+### I/O复用 
+本节不再去重复几种 blocking IO，nonblocking IO，IO multiplexing，signal driven IO
+和asynchronous IO，详细的可以阅读UNIX网络编程卷一第6章节。这里重点讲下I/O复用。
+
+I/O复用是指内核具备一旦发现进程指定的一个或多个I/O条件就绪后它就通知进程进行相应处理的能力。I/O条件就绪是指输入数据已经准备好被读取或者描述符已经能够承接更多地输出。在具体实现时，首先构造一张有关描述符的列表，然后调用一个函数，直到这些描述符中的一个已经准备I/O时，该函数才返回。在返回时，它告诉进程哪些描述符已经准备好可以进行I/O。
 
 
+I/O复用使用两个系统调用：select和recvfrom。所以，I/O复用的优势在于等待多个描述符就绪，可以提供更高的吞吐量。select系统调用可以告知内核对哪些描述符（可读，可写，异常）感兴趣以及等待多长时间（无限等待，等待某段时间，不等待）。
 
+### select vs Epoll
+select存在如下几个缺点：
 
+1. 最大并发数限制，因为一个进程所打开的 FD （文件描述符）是有限制的，由 FD_SETSIZE 设置，默认值是 1024或者2048，因此 Select 模型的最大并发数就被相应限制了。需要通过重新编译内核才能修改 FD_SETSIZE。
+2. 效率低下：每次调用都会线性扫描全部的 FD 集合，这样效率就会呈现线性下降。
+3. 内存拷贝问题：内核需要采取内存拷贝，把 FD 消息通知给用户空间呢。
 
-P78
+Epoll 存在如下几个优点：
 
-p85  baklog 图
-
-listen 指定 backlog。内核维护两个队列 未完成连接队列（处于SYN_RCVD状态），已完成连接队列
-syn flood 攻击  忽略了大量关于c语言之间的描述
-
-accept 监听套接字 和  已连接套接字  前者一直存在  后者用完则关闭
-
-p92
-
-p122 必读 nio
-
-select 的最大描述符设置需要重新编译或者使用新版本的的参数设置；线性搜索，扩展能力差。
-选择 epoll
-
-select 可读，可写，异常
-无限等待，等待某段时间，不等待
-
-p361 解释了 为什么需要finishConnect
-
+1. Epoll没有最大并发连接的限制，上限是最大可以打开文件的数目，这个数字一般远大于 2048, 一般来说这个数目和系统内存关系很大 ，具体数目可以 cat /proc/sys/fs/file-max 察看。
+2. 效率提升：Epoll 最大的优点就在于它只管你“活跃”的连接 ，而跟连接总数无关，因此在实际的网络环境中， Epoll 的效率就会远远高于 select 和 poll 。
+3. 没有内存拷贝问题：Epoll 在这点上使用了mmap共享内存技术，避免了内存拷贝。
+ 
 ---
  
 ## 线程并发 
@@ -258,5 +263,6 @@ r大blog 2指令汇编，3指令汇编。 如果把mov r1,r2 等类似的指令�
 * http://blog.sweelia.com/articles/2013/01/05/1357370792163.html
 * [SMP，NUMA 和 MPP 三种系统架构](http://www.chenjunlu.com/2012/08/parallel-computer-memory-architectures/)
 * [虚拟内存](http://zh.wikipedia.org/wiki/%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98) 
+* [Linux下select, poll和epoll IO模型的详解](http://blog.csdn.net/tianmohust/article/details/6677985)
 
 {% include JB/setup %}
