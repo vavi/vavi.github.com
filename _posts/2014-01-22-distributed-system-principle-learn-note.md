@@ -128,7 +128,7 @@ wal vs redo
 3阶段提交 酷壳文章
 超时+查询接口
 csdn 改进
-### lease
+### LEASE
 ，相当于租金，zk
 的session 时间。
 ### MVCC
